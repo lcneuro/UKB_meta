@@ -114,7 +114,7 @@ def check_covariance(df, var1, var2, type1, type2, save=False, prefix=None):
     # Save figure
     if save:
         plt.tight_layout()
-        plt.savefig(prefix + f"covar_{var1}_{var2}.pdf")
+        plt.savefig(prefix + f"_{var1}_{var2}.pdf")
 #    plt.close("all")
 
 
@@ -128,9 +128,9 @@ def check_assumptions(results, sdf, prefix):
     pdf = PdfPages(prefix + f".pdf")
 
     # Scatterplotting function
-    def scdensplot(x, y):
+    def scdensplot(x, y, bins=20):
         sns.scatterplot(x=x, y=y, s=5, color=".15")
-        sns.histplot(x=x, y=y, bins=40, pthresh=.1, cmap="mako")
+        sns.histplot(x=x, y=y, bins=bins, thresh=None, cmap="mako", cbar=True)
     #    sns.kdeplot(x=x, y=y, levels=5, color="w", linewidths=1)
 
     # Residuals distribution (heteroscedasticity, linearity)
@@ -138,9 +138,12 @@ def check_assumptions(results, sdf, prefix):
     plt.title("Distribution of residuals")
     sns.histplot(residuals, stat="density", bins=50)
     x = np.linspace(residuals.min(), residuals.max(), 1000)
-    gaussian = stats.norm.pdf(x, *stats.norm.fit(residuals))
+    gaussian = stats.t.pdf(x, results.df_resid, *stats.t.fit(residuals)[1:])
     plt.plot(x, gaussian, color="red", lw=2)
     plt.xlabel("Residual")
+    plt.xlim(residuals.mean()-residuals.std()*4,
+             residuals.mean()+residuals.std()*4)
+    plt.axvline(0, color="k")
     plt.tight_layout(w_pad=1)
     plt.close("all")
     pdf.savefig(fig, transparent=True)
@@ -149,7 +152,10 @@ def check_assumptions(results, sdf, prefix):
     fig = plt.figure(figsize=(10, 7))
     sm.qqplot(residuals, stats.t, line="s", distargs=(results.df_resid,),
               ax=plt.gca())
+#    plt.axhline(0, color="k", dashes=[2, 2])
+    plt.axvline(0, color="k", dashes=[2, 2])
     plt.title("QQ plot of residuals")
+    plt.xlabel("Theoretical T")
     plt.ylabel("Residual")
     plt.tight_layout(w_pad=1)
     plt.close("all")
@@ -163,7 +169,10 @@ def check_assumptions(results, sdf, prefix):
     plt.title("Residuals vs samples in order")
     plt.xlabel("Sample")
     plt.ylabel("Residual")
-    scdensplot(np.arange(len(residuals)), residuals)
+    temp = sdf["eid"].to_frame().assign(**{"residual": residuals}) \
+        .sort_values(by="eid").reset_index(drop=True).reset_index()
+    scdensplot(temp["index"], temp["residual"])
+    plt.axhline(0, color="white", dashes=[2, 2])
     plt.tight_layout(w_pad=1)
     plt.close("all")
     pdf.savefig(fig, transparent=True)
@@ -173,7 +182,8 @@ def check_assumptions(results, sdf, prefix):
     plt.title("Residuals vs fitted values")
     plt.xlabel("Fitted value")
     plt.ylabel("Residual")
-    scdensplot(results.fittedvalues, residuals)
+    scdensplot(results.fittedvalues, residuals, bins=20)
+    plt.axhline(0, color="white", dashes=[2, 2])
     plt.tight_layout(w_pad=1)
     plt.close("all")
     pdf.savefig(fig, transparent=True)
@@ -198,7 +208,7 @@ def check_assumptions(results, sdf, prefix):
 def match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
     """
     Function to perform matching across chosen independent variables.
-    Simple matching with no grouping involved.
+    Method: exact matching across specified covariates.
     """
 
     # Separate items per main variable
@@ -251,6 +261,7 @@ def match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
 
     # Analyze candidate availability
     candidate_numbers = pd.DataFrame(candidate_numbers_list, columns=["count"])
-    print("Matching info:\n", candidate_numbers.describe())
+    print(f"Matching info:\nmatched subjects: N={mdf.shape[0]}\n", \
+            "candidates:\n", candidate_numbers.describe())
 
     return mdf

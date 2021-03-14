@@ -37,8 +37,8 @@ raise
 #contrast="t2dm"
 
 # Open data
-t2 = pd.read_csv(SRCDIR + "pub_meta_volume_diab_stats_46.csv", index_col=0) #.iloc[-10:, :].reset_index()
-ag = pd.read_csv(SRCDIR + "pub_meta_volume_age_stats_46.csv", index_col=0) #.iloc[-10:, :].reset_index()
+t2 = pd.read_csv(SRCDIR + "pub_meta_volume_stats_diab_46.csv", index_col=0) #.iloc[-10:, :].reset_index()
+ag = pd.read_csv(SRCDIR + "pub_meta_volume_stats_age_46.csv", index_col=0) #.iloc[-10:, :].reset_index()
 
 # Nuemrify interval data (from str to list of floats)
 numerify_cols = lambda df: df.assign(
@@ -86,7 +86,6 @@ sub_dfs = [df.query('contrast == "age"').reset_index(drop=True),
 # Or just pick jsut 1 contrast at a time
 #df = df.query(f'contrast == "{contrast}"')
 
-# %%
 # =============================================================================
 # Plot
 # =============================================================================
@@ -99,20 +98,30 @@ plt.style.use("default")
 
 #sns.set_style("whitegrid")
 
-plt.rcParams['text.color'] = "black"
-plt.rcParams['axes.labelcolor'] = "black"
 plt.rcParams['xtick.color'] = "black"
 plt.rcParams['ytick.color'] = "black"
-plt.rcParams['ytick.major.size'] = 10
-plt.rcParams['ytick.major.width'] = 2
-plt.rcParams["font.weight"] = "bold"
-plt.rcParams['axes.labelweight'] = "bold"
-plt.rcParams['xtick.labelsize'] = 13*fs
-plt.rcParams['axes.labelweight'] = "bold"
-plt.rcParams['xtick.color'] = "black"
 plt.rcParams['xtick.major.size'] = 10
 plt.rcParams['xtick.major.width'] = 2
+plt.rcParams['ytick.major.size'] = 10
+plt.rcParams['ytick.major.width'] = 2
+plt.rcParams['text.color'] = "black"
+plt.rcParams['axes.labelcolor'] = "black"
+plt.rcParams["font.weight"] = "bold"
+plt.rcParams["font.family"] = "DejaVu Sans"
+plt.rcParams["font.size"] = 12*fs
+plt.rcParams['xtick.labelsize'] = 13*fs
 plt.rcParams['ytick.labelsize']=12*fs
+plt.rcParams['axes.labelsize']=11*fs
+plt.rcParams['axes.labelweight'] = "bold"
+plt.rcParams['lines.linewidth'] = 3
+plt.rcParams['lines.markersize'] = 3
+plt.rcParams['legend.fontsize'] = 20*fs
+plt.rcParams['text.latex.preamble'] = [r'\boldmath']
+plt.rcParams['figure.titlesize'] = 16*fs
+plt.rcParams['figure.titleweight'] = "bold"
+plt.rcParams['axes.titlesize'] = 13*fs
+plt.rcParams['axes.titleweight'] = "bold"
+
 
 # Astrix
 def p2star(p):
@@ -167,9 +176,9 @@ f = sns.FacetGrid(data=df, col="contrast", height=16, aspect=0.6,
 # Axis titles
 ss = [t2["sample_sizes"][0], ag["sample_sizes"][0]]
 title_texts = [
-        f"Age (T2DM- only, Sex-Matched)\n(N$_{{}}$={ss[1][0]:,})",
-        f"T2DM+ vs T2DM- (Age and Sex-Matched)\n(N$_{{T2DM+}}$={ss[0][1]:,}, " \
-        f"N$_{{T2DM-}}$={ss[0][0]:,})"
+        f"Age (T2DM- only, Sex-Matched)\nN$_{{}}$={ss[1][0]:,}",
+        f"T2DM (T2DM+ vs T2DM-, Age and Sex-Matched)\nN$_{{T2DM+}}$={ss[0][1]:,}, " \
+        f"N$_{{T2DM-}}$={ss[0][0]:,}"
         ]
 
 
@@ -180,7 +189,7 @@ for i, ax in enumerate(f.axes[0]):
     sub_df = sub_dfs[i]
 
     # Remove title
-    ax.set_title(title_texts[i], fontweight="bold", fontsize=13*fs)
+    ax.set_title(title_texts[i])
 
     # Add grid
     ax.grid(zorder=0)
@@ -229,26 +238,29 @@ for i, ax in enumerate(f.axes[0]):
 ax = f.axes[0][0]
 ax.set_xlim([-1.19, 0.59])
 ax.spines['right'].set_visible(False)
+ax.set_xlabel("Change in Gray Matter Volume\nAcross Age (% per year)")
 
 # T2DM
 # ----
 ax = f.axes[0][1]
-ax.set_xlim([-7.9, 2.9])
+ax.set_xlim([-7.9, 4.3])
+ax.set_xlabel("Change in Gray Matter Volume\nCompared to T2DM- Controls (%)")
 
 # Figure formatting
 # ------
 
 # Add common suptitle
 plt.suptitle("Gray Matter Volume Changes Associated with Age and T2DM: " \
-             "UK Biobank Dataset", fontweight="bold", fontsize=16*fs)
+             "UK Biobank Dataset")
 
-# Add common x label
-plt.gcf().text(0.6, 0.03, "Change In Gray Matter Volume (%)", ha='center',
-        fontsize=14*fs, fontweight="bold")
+## Add common x label
+#plt.gcf().text(0.6, 0.03, "Change In Gray Matter Volume (%)", ha='center',
+#        fontsize=14*fs, fontweight="bold")
 
 
 plt.tight_layout(rect=[0, 0.05, 1, 0.98])
-plt.savefig(OUTDIR + "figures/pub_meta_volume_figure.pdf")
+plt.savefig(OUTDIR + "figures/JAMA_meta_figure_volume.pdf",
+            transparent=True)
 plt.close("all")
 
 #from scipy import stats
