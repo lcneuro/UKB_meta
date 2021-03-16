@@ -47,14 +47,14 @@ SRCDIR = HOMEDIR + "data/"
 OUTDIR = HOMEDIR + "results/volume/"
 
 # Inputs
-CTRS = "age"  # Contrast: diab or age
+CTRS = "diab"  # Contrast: diab or age
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
 PARC = 46  # Type of parcellation to use, options: 46 or 139
 excl_sub = [] # [1653701, 3361084, 3828231, 2010790, 2925838, 3846337,]  # Subjects
 ## to exlucde due to abnormal total gray matter volumes
 excl_region = ["Pallidum"]  # Regions to exclude
-RLD = False  # Reload regressor matrices instead of computing them again
+RLD = True  # Reload regressor matrices instead of computing them again
 
 raise
 
@@ -365,7 +365,6 @@ for i, feat in tqdm(enumerate(features), total=len(features), desc="Models fitte
         f.write(results.summary().as_html())
 
     # Check assumptions
-#    print(f"R^2={results.rsquared:2f}")
     check_assumptions(
             results,
             sdf,

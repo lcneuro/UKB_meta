@@ -40,7 +40,7 @@ SRCDIR = HOMEDIR + "data/"
 OUTDIR = HOMEDIR + "results/cognition/"
 
 # Inputs
-CTRS = "diab"  # Contrast: diab or age
+CTRS = "age"  # Contrast: diab or age
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
 excl_sub = []  # SUbjects to exlude, if any
@@ -299,7 +299,7 @@ for i, feat in enumerate(features):
             results,
             sdf,
             prefix=OUTDIR + \
-            f"stats_misc/pub_meta_cognition_stats_assumptions_{CTRS}_{feat}"
+            f"stats_misc/pub_meta_cognition_stats_assumptions_{feat}_{CTRS}"
             )
 
     # Plot across age
