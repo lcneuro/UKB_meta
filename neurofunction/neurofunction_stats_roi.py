@@ -29,10 +29,6 @@ from nilearn import image
 from nilearn import masking
 from nilearn import input_data
 from nilearn import plotting
-from nistats.design_matrix import make_second_level_design_matrix
-from nistats.second_level_model import SecondLevelModel
-from nistats.reporting import plot_design_matrix
-from nistats.thresholding import map_threshold
 import nibabel as nib
 
 get_ipython().run_line_magic('cd', '..')
@@ -60,12 +56,13 @@ T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 excl_sub = [] # [1653701, 3361084, 3828231, 2010790, 2925838, 3846337,]  # Subjects
 ## to exlucde due to abnormal total gray matter neurofunctions
 
-CTRS = "diab"  # Contrast: diab or age
+CTRS = "age"  # Contrast: diab or age
 CT = 12  # Cluster threshold for group level analysis (in voxels?)
 PTHR = 0.05  # Significance threshold for p values
 GM_THR = 0.5  # Threshold for gm mask. Voxels with Probability above this
 MDL = "ALFF"  # Modality
 EXTRA = ""
+PARC = 46  #TODO
 
 VOLUME = 1000  # Cluster volume, mm3
 VOXEL_DIM = 2.4  # Voxel dimension in work space, assuming cubic voxels, mm
@@ -80,7 +77,7 @@ regressors_dict = {
 print("Settings:\n" \
     f"CONTRAST={CTRS}, MDL={MDL}, PTHR={PTHR}, CT={CT}")
 
-#raise
+# raise
 
 # %%
 # =============================================================================
@@ -288,164 +285,44 @@ print("Sample sizes:", regressors_matched.groupby([CTRS]).count()["subject_label
 # Status
 print("Loading nifti images.")
 
-# List of input images, careful with the order!
+# Load input images, careful with the order!
 imgs = [image.load_img(SRCDIR + f"{MDL}/{MDL.lower()}_normalized_batch_{BATCH}/" \
                        f"{sub}_{MDL.lower()}_normalized.nii") \
         for sub in regressors_matched["subject_label"].astype(int)]
 
-# Status
-print("Preparing Nistats design matrix.")
-
-# Get subject labels
-subject_labels = regressors_matched["subject_label"]
-
-# Make nistats deisgn matrix object
-design_matrix = make_second_level_design_matrix(
-        subject_labels,
-        regressors_matched[regressors_dict[CTRS]]
-        )
-
-## Run regression
-## -----------
-#
-## Status
-#print("Fitting model.")
-#
-## Construct second level GLM object
-#GLM = SecondLevelModel(mask_img=gm_mask, verbose=2)
-#
-## Fit GLM
-#GLM.fit(imgs, design_matrix=design_matrix)
-#
-## Extract results that belong to contrast of interest,
-## approximating t scores with z scores due to high N
-#z_map = GLM.compute_contrast(second_level_contrast=CTRS,
-#                             output_type="z_score")
-#
-## Save Z map
-#nib.save(z_map, OUTDIR + f"stats/pub_meta_neurofunction_zmap_{MDL.lower()}_" \
-#                 f"batch{BATCH}_GM_{GM_THR}_contrast_{CTRS}_{EXTRA}.nii")
-#
-#
-## Threshold voxel maps
-## -----------
-#
-## Status
-#print("Thresholding z-map.")
-#
-## Apply statistical thresholds
-#thresholded_map, threshold = map_threshold(
-#    z_map, alpha=PTHR, height_control='fdr', cluster_threshold=CT)
-#
-## Change zeros to nans
-#thr_map_nan = image.math_img('np.where(img == 0, np.nan, img)', img=thresholded_map)
-#
-## Export thresholded image
-#nib.save(thr_map_nan, OUTDIR + f"stats/pub_meta_neurofunction_statthr_" \
-#         f"{MDL.lower()}_batch{BATCH}_GM_{GM_THR}_contrast_{CTRS}_uc{CT}_" \
-#         f"fdr{PTHR}_{EXTRA}.nii")
-#
-#
-## Status
-#print("Finished with extracting basic results.")
-
-# %%
-# =============================================================================
-#  Check assumptions in maunally selected clusters
-# =============================================================================
 
 # Create labeled mask for each region
 # ------
 
-# Define clusters to look at
-clusters_dict = {
-        "Caudate": [11, 3, 16],
-        "Orbitofrontal_Cortex": [8, 12, -18],
-        "Premotor_Cortex": [-52, 10, 28],
-        "Posterior_Cingulate_Gyrus": [-4, -34, 32]
-            }
-
 # Status
-print("/n/n#####/nChecking assumptions around the following coordinates:")
-pprint(clusters_dict)
+print("Building mask.")
 
-# Status
-print("Building masker object.")
+# Load atlas
+label_mask = image.load_img(SRCDIR + f"atlas/{PARC}/ukb_gm_labelmask_{PARC}.nii.gz")
 
-# Function that return radius in number of voxels
-comp_radius = lambda volume, voxel_dim: (volume*3/4/3.14159)**(1/3)/voxel_dim
-
-# Transfrom cluster info
-clusters = pd \
-    .DataFrame(clusters_dict) \
-    .T \
-    .reset_index() \
-    .set_axis(["label", "x", "y", "z"], axis=1) \
-    .assign(**{
-            "radius": comp_radius(VOLUME, VOXEL_DIM),
-            "index": np.arange(len(clusters_dict))+1
-            })
-
-# Create clusters in 3d space based on center and radius
-# assign labels to clusters
-# and then merge them into one array sequentially
-
-# Make voxels within the sphere n, others 0
-def create_bin_sphere(arr_size=None, center=None, r=None, value=None):
-    """
-    Function from SO: https://stackoverflow.com/a/56060957/11411944
-    Make 3d sphere
-    """
-    coords = np.ogrid[:arr_size[0], :arr_size[1], :arr_size[2]]
-    distance = np.sqrt((coords[0] - center[0])**2 + \
-                       (coords[1]-center[1])**2 + \
-                       (coords[2]-center[2])**2)
-    return value*(distance <= r)
-
-# MNI to work space coordinate conversion
-aff = target_img.affine
-mni_convert = lambda mni_coords, aff: \
-                    np.linalg.inv(aff[:3, :3])@(mni_coords - aff[:3, 3])
-
-# Get all zero mask to serve as 3d space
-space = np.array(target_img.get_data())
-space[:] = 0
-
-# Array which will be the mask with labels
-label_mask = np.copy(space)
-
-# Do for every cluster
-for (i, cluster) in clusters.iterrows():
-
-    # Construct 3d sphere
-    current_cluster = create_bin_sphere(
-            arr_size=space.shape,
-            center=mni_convert(cluster[["x", "y", "z"]], aff),
-            r=(cluster["radius"]-0.5),
-            value=cluster["index"]
-            )
-
-    # Print size
-    print(f'size of cluster #{int(cluster["index"])}:',
-          np.argwhere(current_cluster == cluster["index"]).shape[0])
-
-    # Add label cluster to mask, sequentially
-    label_mask = \
-        np.where(current_cluster == cluster["index"],
-                 current_cluster,
-                 label_mask)
-
-# Conver label_mask to nifti
-mask_img = image.new_img_like(
-        target_img, data=label_mask
+# Rshape mask
+mask_img = image.resample_img(
+        label_mask,
+        target_affine=target_img.affine,
+        target_shape=target_img.shape,
+        interpolation="nearest"
         )
+
 # Save mask img
 #nib.save(mask_img, "/Users/botond/Desktop/mask_img.nii")
 
 # Construct masker object (with gm mask also added in)
-label_masker = \
-    input_data.NiftiLabelsMasker(mask_img, background_label=0, mask_img=gm_mask)
+label_masker = input_data.NiftiLabelsMasker(
+        mask_img,
+        background_label=0,
+        mask_img=gm_mask
+        )
 
+labels = pd \
+    .read_csv(SRCDIR + f"atlas/{PARC}/ukb_gm_labelmask_{PARC}.csv") \
+    ["label"] \
+    .str.replace(" ", "_") \
+    .to_list()
 
 # Mask ALFF in subject data
 # ------
@@ -481,7 +358,7 @@ data = pd \
     .set_axis(["subject_label", "data"], axis=1) \
     .explode("data") \
     .assign(**{"label": \
-               [item for item in clusters["label"].to_list()] \
+               [item for item in labels] \
                *len(regressors_matched["subject_label"])}) \
     .pivot(index="subject_label", columns="label", values="data") \
     .astype(float) \
@@ -495,58 +372,95 @@ df = regressors_matched \
 # Run stat model
 # -----
 
-# Run stats for each label
-for label in clusters["label"]:
+# Status
+print("Fitting models.")
 
-    # Status
-    print(f"Fitting model for {label}.")
+# Dictionary to store stats
+feat_stats = {}
 
+# Iterate over all regions
+for i, feat in tqdm(enumerate(labels), total=len(labels), desc="Models fitted: "):
+
+    # Prep
+    # ----
+    # Extract current feature
+    sdf = df[["eid", "age", "diab", "sex", "college", "ses", "bmi", f"{feat}"]]
+
+    # Get sample sizes
+    sample_sizes = sdf.groupby("diab")["eid"].count()
+
+    # Fit
+    # -----
     # Formula
     if CTRS == "age":
-        formula = f"{label} ~ age + C(sex) + C(college) + C(ses) + bmi"
+        formula = f"{feat} ~ age + C(sex) + C(college) + C(ses) + bmi"
     if CTRS == "diab":
-        formula = f"{label} ~ C(diab) + age + C(sex) + C(college) + C(ses) + bmi"
-
-    # Construct OLS model
-    model = smf.ols(formula, data=df)
+        formula = f"{feat} ~ C(diab) + age + C(sex) + C(college) + C(ses) + bmi"
 
     # Fit model
+    model = smf.ols(formula, data=sdf)
     results = model.fit()
 
-    # Save results
-    with open(OUTDIR + f"stats_misc/pub_meta_neurofunction_regression_table" \
-              f"_{label}_{CTRS}.html", "w") as file:
-        file.write(results.summary().as_html())
+    # Monitor
+    # --------
+
+    # Save detailed stats report
+    with open(OUTDIR + f"stats_misc/pub_meta_neurofunction_roi_regression_table_{feat}" \
+              f"_{CTRS}_{PARC}.html", "w") as f:
+        f.write(results.summary().as_html())
 
     # Check assumptions
     check_assumptions(
-        results,
-        df,
-        prefix=OUTDIR + \
-        f"stats_misc/pub_meta_neurofunction_stats_assumptions_{label}_{CTRS}"
-        )
+            results,
+            sdf,
+            prefix=OUTDIR + \
+            f"stats_misc/pub_meta_neurofunction_roi_stats_assumptions_{feat}" \
+                "_{CTRS}_{PARC}"
+            )
 
+    # Plot across age
     if CTRS == "diab":
-
-        # Status
-        print(f"Visualizing relationships for {label}.")
-
-        # Bin age
-        bins = np.arange(0, 100, 5)
-        df["age_group"] = pd.cut(df["age"], bins).astype(str)
-
-        # Sort per age
-        df = df.sort_values(by="age")
-
-        # Plot for age*diabetes for current label
         plt.figure()
-        sns.lineplot(data=df, x="age_group", y=f"{label}",
-                   hue="diab", ci=68, palette=sns.color_palette(["black", "red"]),
-                   err_style="bars", marker="o", sort=False,
-                   err_kws={"capsize": 5}) \
-
-        plt.savefig(OUTDIR + f"stats_misc/pub_meta_neurofunction_age-diab-plot_{label}.pdf")
+        plt.title(feat)
+        sns.lineplot(data=sdf[[feat, "age", "diab"]], x="age", y=feat, hue="diab",
+                     palette=sns.color_palette(["black", "red"]))
+        plt.tight_layout()
+        plt.savefig(OUTDIR + f"stats_misc/pub_meta_neurofunction_roi_age-" \
+                    f"diab-plot_{feat}_{PARC}.pdf")
         plt.close()
 
+    # Save results
+    # -------
+    # Get relevant key for regressor
+    rel_key = [key for key in results.conf_int().index.to_list() \
+           if CTRS in key][0]
+
+    # Get effect size
+    tval = results.tvalues.loc[rel_key]
+    beta = results.params.loc[rel_key]
+
+    # Get confidence intervals
+    conf_int = results.conf_int().loc[rel_key, :]
+
+    # Get p value
+    pval = results.pvalues.loc[rel_key]
+
+    # Save stats as dict
+    feat_stats[f"{feat}"] = [list(sample_sizes), tval, pval, beta,
+                              np.array(conf_int)]
+
+
+# Convert stats to df and correct p values for multicomp
+df_out = pd.DataFrame.from_dict(
+        feat_stats, orient="index",
+        columns=["sample_sizes", "tval", "pval", "beta", "conf_int"]) \
+        .reset_index() \
+        .rename({"index": "label"}, axis=1) \
+        .assign(**{"pval": lambda df: pg.multicomp(list(df["pval"]),
+                                                   method="bonf")[1]})
+
+# Save outputs
+df_out.to_csv(OUTDIR + f"stats/pub_meta_neurofunction_roi_stats_{CTRS}_{PARC}.csv")
+
 # Status
-print("Finished execution.")
+print("Execution has finished.")

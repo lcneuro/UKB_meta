@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sun Jul 19 19:47:00 2020
+Created on Mon Mar 22 12:41:58 2021
 
 @author: botond
 
 Notes:
--this script performs linear regression on cognitive data from UKB.
+The structure of this script is determined by the modality (for the most part)
+and by contrast to some extent.
 
 """
 
@@ -25,34 +26,32 @@ from IPython import get_ipython
 
 get_ipython().run_line_magic('cd', '..')
 from helpers.regression_helpers import check_covariance, match, check_assumptions
-get_ipython().run_line_magic('cd', 'cognition')
+get_ipython().run_line_magic('cd', 'med')
 
 # =============================================================================
 # Setup
 # =============================================================================
 
 plt.style.use("ggplot")
-sns.set_style("whitegrid")
 
 # Filepaths
 HOMEDIR = os.path.abspath(os.path.join(__file__, "../../../")) + "/"
 SRCDIR = HOMEDIR + "data/"
-OUTDIR = HOMEDIR + "results/cognition/"
+OUTDIR = HOMEDIR + "results/med/cognition/"
 
 # Inputs
-CTRS = "age"  # Contrast: diab or age
+CTRS = "metfonly_unmed"  # Contrast: diab or age
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
 excl_sub = []  # SUbjects to exlude, if any
-RLD = True  # Reload regressor matrices instead of computing them again
+RLD = False  # Reload regressor matrices instead of computing them again
 
-raise
+#raise
 
 # %%
 # =============================================================================
 # Load data
 # =============================================================================
-
 
 # Load cognitive data
 # -------
@@ -120,6 +119,17 @@ age_onset = age_onset \
     .query(f'(diab==0 & age_onset!=age_onset) or (diab==1 & age_onset>={T1DM_CO})') \
     [["eid", "age_onset"]]
 
+# Duration
+duration = age_onset \
+    .merge(age, on="eid", how="inner") \
+    .pipe(lambda df: df.assign(**{
+            "duration": df["age"] - df["age_onset"]})) \
+    .dropna(how="any") \
+    [["eid", "duration"]]
+
+# Load medication specific data
+med = pd.read_csv(SRCDIR + f"med/{CTRS}.csv")[["eid", CTRS]]
+
 # %%
 # =============================================================================
 # Build regressor matrices
@@ -131,15 +141,8 @@ print(f"Building regressor matrices with contrast [{CTRS}].")
 # Choose variables
 regressors = functools.reduce(
         lambda left, right: pd.merge(left, right, on="eid", how="inner"),
-        [diab, age, sex, college, ses, bmi, age_onset]
-        ) \
-        .drop("age_onset", axis=1)
-
-
-# If contrast is age
-if CTRS == "age":
-    # Exclude subjects with T2DM
-    regressors = regressors.query("diab == 0")
+        [age, sex, college, ses, bmi, med, duration]
+        )
 
 # Assign labels to features
 features = [col for col in data.columns if "eid" not in col]
@@ -163,78 +166,56 @@ for i, feat in enumerate(features):
     # Temporarily remove y values
     regressors_clean = regressors_y.drop(feat, axis=1)
 
+    # Coarse ivs before matching
+    age_bins = np.arange(0, 100, 5)
+    duration_bins = np.arange(0, 100, 3)
+
+    regressors_clean = regressors_clean.pipe(lambda df: df.assign(**{
+        "age_group": pd.cut(df["age"], age_bins, include_lowest=True,
+                            labels=age_bins[1:]),
+        "duration_group": pd.cut(df["duration"], duration_bins, include_lowest=True,
+                                 labels=duration_bins[1:]),
+            }))
+
+    # Save full regressor matrix
+    regressors_clean.to_csv(OUTDIR + f"regressors/pub_meta_med_cognition_full_" \
+                            f"regressors_{CTRS}.csv")
+
     # Check regressoriance of ivs
     # -----
 
-    if CTRS == "age":
+    # Interactions among independent variables
+    var_dict = {
+            "age": "cont",
+            "sex": "disc",
+            "college": "disc",
+            "ses": "disc",
+            "bmi": "cont",
+            "duration": "cont"
+            }
 
-        # Interactions among independent variables
-        var_dict = {
-                "sex": "disc",
-                "college": "disc",
-                "ses": "disc",
-                "bmi": "cont"
-                }
+    for name, type_ in var_dict.items():
 
-        for name, type_ in var_dict.items():
+        check_covariance(
+                regressors_clean,
+                var1=CTRS,
+                var2=name,
+                type1="disc",
+                type2=type_,
+                save=True,
+                prefix=OUTDIR + f"covariance/pub_meta_med_cognition_covar_{feat}_"
+                )
 
-            check_covariance(
-                    regressors_clean,
-                    var1=name,
-                    var2="age",
-                    type1=type_,
-                    type2="cont",
-                    save=True,
-                    prefix=OUTDIR + f"covariance/pub_meta_cognition_covar_{feat}_"
-                    )
-
-            plt.close("all")
-
-    if CTRS == "diab":
-
-        # Interactions among independent variables
-        var_dict = {
-                "age": "cont",
-                "sex": "disc",
-                "college": "disc",
-                "ses": "disc",
-                "bmi": "cont"
-                }
-
-        for name, type_ in var_dict.items():
-
-            check_covariance(
-                    regressors_clean,
-                    var1="diab",
-                    var2=name,
-                    type1="disc",
-                    type2=type_,
-                    save=True,
-                    prefix=OUTDIR + f"covariance/pub_meta_cognition_covar_{feat}_"
-                    )
-
-            plt.close("all")
+        plt.close("all")
 
     # Perform matching
     # ------
-    if (CTRS == "age") & (RLD == False):
-
+    if RLD == False:
         # Match
         regressors_matched = match(
                 df=regressors_clean,
-                main_var="sex",
-                vars_to_match=["age"],
-                N=1,
-                random_state=1
-                )
-
-    if (CTRS == "diab") & (RLD == False):
-
-        # Match
-        regressors_matched = match(
-                df=regressors_clean,
-                main_var="diab",
-                vars_to_match=["age", "sex"],
+                main_var=CTRS,
+                vars_to_match=["age_group", "sex", "duration_group"],
                 N=1,
                 random_state=1
                 )
@@ -242,11 +223,11 @@ for i, feat in enumerate(features):
     # Save matched regressors matrix
     if RLD == False:
         regressors_matched.to_csv(OUTDIR + \
-            f"regressors/pub_meta_cognition_matched_regressors_{feat}_{CTRS}.csv")
+            f"regressors/pub_meta_med_cognition_matched_regressors_{feat}_{CTRS}.csv")
 
 # %%
 # =============================================================================
-# Analysis
+# Fit models
 # =============================================================================
 
 # Status
@@ -268,22 +249,19 @@ for i, feat in enumerate(features):
 
     # Load regressors
     regressors_matched = pd.read_csv(OUTDIR + \
-            f"regressors/pub_meta_cognition_matched_regressors_{feat}_{CTRS}.csv",
+            f"regressors/pub_meta_med_cognition_matched_regressors_{feat}_{CTRS}.csv",
             index_col=0)
 
     # Reunite regressors and y values of the current feature
     sdf = regressors_matched.merge(data_feat, on="eid")
 
     # Get sample sizes
-    sample_sizes = sdf.groupby("diab")["eid"].count()
+    sample_sizes = sdf.groupby(CTRS)["eid"].count()
 
     # Regression
     # -------
     # Formula
-    if CTRS == "age":
-        formula = f"{feat} ~ age + C(sex) + C(college) + C(ses) + bmi"
-    if CTRS == "diab":
-        formula = f"{feat} ~ C(diab) + age + C(sex) + C(college) + C(ses) + bmi"
+    formula = f"{feat} ~ age + C(sex) + C(college) + C(ses) + bmi + duration + {CTRS}"
 
     # Fit model
     model = smf.ols(formula, data=sdf)
@@ -292,7 +270,7 @@ for i, feat in enumerate(features):
     # Monitor
     # ------
     # Save detailed stats report
-    with open(OUTDIR + f"stats_misc/pub_meta_cognition_regression_table_{feat}" \
+    with open(OUTDIR + f"stats_misc/pub_meta_med_cognition_regression_table_{feat}" \
               f"_{CTRS}.html", "w") as f:
         f.write(results.summary().as_html())
 
@@ -301,18 +279,17 @@ for i, feat in enumerate(features):
             results,
             sdf,
             prefix=OUTDIR + \
-            f"stats_misc/pub_meta_cognition_stats_assumptions_{feat}_{CTRS}"
+            f"stats_misc/pub_meta_med_cognition_stats_assumptions_{feat}_{CTRS}"
             )
 
     # Plot across age
-    if CTRS == "diab":
-        plt.figure()
-        plt.title(feat)
-        sns.lineplot(data=sdf[[feat, "age", "diab"]], x="age", y=feat, hue="diab",
-                     palette=sns.color_palette(["black", "red"]))
-        plt.tight_layout()
-        plt.savefig(OUTDIR + f"stats_misc/pub_meta_cognition_age-diab-plot_{feat}.pdf")
-        plt.close()
+    plt.figure()
+    plt.title(feat)
+    sns.lineplot(data=sdf[[feat, "age", CTRS]], x="age", y=feat, hue=CTRS,
+                 palette=sns.color_palette(["black", "red"]))
+    plt.tight_layout()
+    plt.savefig(OUTDIR + f"stats_misc/pub_meta_med_cognition_age-{CTRS}-plot_{feat}.pdf")
+    plt.close()
 
     # Plot distribution of feature
     plt.figure()
@@ -327,7 +304,7 @@ for i, feat in enumerate(features):
     # Save results
     # -------
     # Normalization factor
-    norm_fact = sdf.query('diab==0')[feat].mean()/100
+    norm_fact = sdf[feat].mean()/100
 
     # Get relevant key for regressor
     rel_key = [key for key in results.conf_int().index.to_list() \
@@ -371,4 +348,4 @@ df_out.loc[flip_tasks, ["tval", "beta", "conf_int"]] = \
 df_out = df_out.reset_index()
 
 # Save outputs
-df_out.to_csv(OUTDIR + f"stats/pub_meta_cognition_stats_{CTRS}.csv")
+df_out.to_csv(OUTDIR + f"stats/pub_meta_med_cognition_stats_{CTRS}.csv")

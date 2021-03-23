@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Sep 22 23:04:45 2020
+Created on Mon Mar 22 20:49:07 2021
 
 @author: botond
-
-Notes:
-This script generates a multi-panel figure from cognitive data.
-
 """
 
 import os
@@ -28,31 +24,26 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 # Filepaths
 HOMEDIR = os.path.abspath(os.path.join(__file__, "../../../")) + "/"
 SRCDIR = HOMEDIR + "data/"
-OUTDIR = HOMEDIR + "results/cognition/"
+OUTDIR = HOMEDIR + "results/med/cognition/"
 
 # Inputs
+CTRS = "metfonly_unmed"
+
 # Case specific values
-cases = ["age", "diab", "meta"]
+cases = [CTRS]
 titles = [
-        "Cognitive Deficits Associated with age:\n" \
-            "UK Biobank Dataset (T2DM- only, Sex-Matched)",
-        "Cognitive Deficits Associated with T2DM:\n" \
-            "UK Biobank Dataset (Age and Sex-Matched)",
-        "Cognitive Deficits Associated with T2DM:\n" \
-            "Meta-Analysis of Published Literature (Age-Matched)",
+        ""
         ]
 ylabeltexts = [
-        "Change in Task Performance\nAcross Age (% per year)",
-        "Change in Task Performance\nCompared to T2DM- Controls (%)",
-        "Standardized Mean Difference\nCompared to T2DM- Controls (Cohen's d)"
+        "Difference in Task Performance\n{cases[0]} (% of Avg)",
         ]
-colors = ["Greens", "Blues", "Reds"]
-ylims = [[-2.5, 0.3], [-15.5, 1.5], [-0.75, 0.2]]
-sfs = [4e4, 1e3, 0.2]  # Marker size factors
-textpads = [0.1, 0.2, 0.02]  # Padding for text along y axis
-xtickrots = [0, 0, 0]  # Rotation of xticks
-xtickvas = ["top", "top", "top"]  # Vertical alignment for xticks
-xtickpads = [0, 0, 0]  # Paddong fo xticks
+colors = ["Purples"]
+ylims = [[-18, 10]]
+sfs = [1e2]  # Marker size factors
+textpads = [0.1]  # Padding for text along y axis
+xtickrots = [0]  # Rotation of xticks
+xtickvas = ["top"]  # Vertical alignment for xticks
+xtickpads = [0]  # Paddong fo xticks
 
 #raise
 
@@ -176,36 +167,17 @@ for case in cases:
 
     # Load
     df = pd.read_csv(
-            OUTDIR + f"stats/pub_meta_cognition_stats_{case}.csv",
+            OUTDIR + f"stats/pub_meta_med_cognition_stats_{case}.csv",
             index_col=0
             )
 
-    # Transfomrations specific to case
-    if case in ["age", "diab"]:
-
-            # Cast strings to float arrays
-            df["sample_sizes"] = \
-                df["sample_sizes"].apply(lambda item: np.array(item[1:-1].split(", "), dtype=float))
-            df["conf_int"] = \
-                df["conf_int"].apply(lambda item:
-                    np.array([float(val) for val in item[1:-1].split(" ") if len(val) > 0])
-                )
-
-    elif case in ["meta"]:
-
-        # Transform df
-        df = df \
-            .reset_index() \
-            .pipe(lambda df:
-                df.assign(**{
-                    "label": df["Cognitive Domain"],
-                    "conf_int": [[row[1]["LB"], row[1]["UB"]] \
-                                 for row in df.iterrows()]
-                            })
-                )
-
-    else:
-        raise(ValueError("Unknown case!"))
+    # Cast strings to float arrays
+    df["sample_sizes"] = \
+        df["sample_sizes"].apply(lambda item: np.array(item[1:-1].split(", "), dtype=float))
+    df["conf_int"] = \
+        df["conf_int"].apply(lambda item:
+            np.array([float(val) for val in item[1:-1].split(" ") if len(val) > 0])
+        )
 
     # Assign transformed df to data dict
     data[case] = df
@@ -214,8 +186,9 @@ for case in cases:
 # Figure
 # =============================================================================
 
-f = plt.figure(figsize=(19.2, 22))
-plt.suptitle("Cognitive Deficits Associated with Age and T2DM\n")
+f = plt.figure(figsize=(19.2, 7))
+plt.suptitle("Cognitive Performance as a Function of Metformin Medication Status:" \
+          "\nUK Biobank Dataset, Coarse Matched for Age, Disease Duration and Sex\n")
 
 # Panels A & B
 # ------
@@ -237,99 +210,46 @@ for c, case in enumerate(cases):
     plt.subplot(len(cases), 1, c+1)
 
     # Populate plot
-    if case in ["age", "diab"]:
+    # Colors
+    colors_all = colors_from_values(
+        np.array(list(-df["beta"]) + [df["beta"].min() + 4, df["beta"].max()]),
+        colors[c])[:-2]
 
-        # Colors
-        colors_all = colors_from_values(
-            np.array(list(-df["beta"]) + [df["beta"].min() + 4, df["beta"].max()]),
-            colors[c])[:-2]
+    for i, item in enumerate(df.iterrows()):
 
-        for i, item in enumerate(df.iterrows()):
+        # Extract data
+        x = item[0]
+        ss, p, y, t, conf_int  = \
+            item[1][["sample_sizes", "pval", "beta", "tval", "conf_int"]]
 
-            # Extract data
-            x = item[0]
-            ss, p, y, t, conf_int  = \
-                item[1][["sample_sizes", "pval", "beta", "tval", "conf_int"]]
+        conf_dist = abs(y - np.array(conf_int))[:, None]
 
-            conf_dist = abs(y - np.array(conf_int))[:, None]
+        # Blob for representing value and sample size
+        plt.scatter(x=x, y=y, s=sum(ss)**2/sfs[c], color=colors_all[i])
+                    #"mediumblue")
 
-            # Blob for representing value and sample size
-            plt.scatter(x=x, y=y, s=sum(ss)**2/sfs[c], color=colors_all[i])
-                        #"mediumblue")
+        # Errorbars
+        plt.errorbar(x, y, yerr=conf_dist, capsize=12, capthick=lw,
+                     elinewidth=lw, color="black")
 
-            # Errorbars
-            plt.errorbar(x, y, yerr=conf_dist, capsize=12, capthick=lw,
-                         elinewidth=lw, color="black")
+    #    # Annotate stats as text
+    #    text = f"T={t:.1f} \n {pformat(p)}" + p2star(p) \
+    #        +  f"\n$\mathbf{{N_{{T2DM}}}}$={ss[1]:,}\n$\mathbf{{N_{{ctrl}}}}$={ss[0]:,}"
+    #
+    #    text_y = 0.2 # 0.5 if max(conf_int) < 0 else max(conf_int) + 0.5
+    #    va = "bottom" # "bottom" if y > 0 else "top"
+    #    plt.annotate(text, xy=[x, text_y],
+    #                 fontsize=9*fs, ha="center", va=va)
 
-        #    # Annotate stats as text
-        #    text = f"T={t:.1f} \n {pformat(p)}" + p2star(p) \
-        #        +  f"\n$\mathbf{{N_{{T2DM}}}}$={ss[1]:,}\n$\mathbf{{N_{{ctrl}}}}$={ss[0]:,}"
-        #
-        #    text_y = 0.2 # 0.5 if max(conf_int) < 0 else max(conf_int) + 0.5
-        #    va = "bottom" # "bottom" if y > 0 else "top"
-        #    plt.annotate(text, xy=[x, text_y],
-        #                 fontsize=9*fs, ha="center", va=va)
-
-            # Add statistical asterisks
-            text = p2star(p)
-            text_x = x + 0.00
-            text_y =  min(conf_int) - textpads[c] \
-                    if y < 0 else max(conf_int) + textpads[c]
-            va = "top" if y < 0 else "bottom"
-            plt.annotate(text, xy=[text_x, text_y], fontsize=12*fs,
-                         ha="center", va=va, fontweight="bold",
-                         rotation=0)
-
-    elif case in ["meta"]:
-
-        # Colors
-        colors_all = colors_from_values(
-            np.array(list(-df["EFFS"]) + [df["EFFS"].min() + 1, df["EFFS"].max()]),
-            colors[c])[:-2]
-
-
-        for i, item in enumerate(df.iterrows()):
-
-            # Extract data
-            x = item[0]
-            y, conf_int, K, Q, I2, p  = \
-                item[1][["EFFS", "conf_int", "K", "Q", "I2", "p"]]
-
-            conf_dist = abs(y - np.array(conf_int))[:, None]
-
-            # Blob for representing value and sample size
-            plt.scatter(x=x, y=y, s=K**2/sfs[c], color=colors_all[i], zorder=2)
-
-            # Errorbars
-            plt.errorbar(x, y, yerr=conf_dist, capsize=18, capthick=lw,
-                         elinewidth=lw, color="black")
-
-        #    # Annotate stats as text
-        #    text = \
-        #        f"K={K}" \
-        #        f"\nQ={Q}" \
-        #        f"\n$\mathbf{{I^2}}$={I2}" \
-        #        f"\n{pformat(p)}" + p2star(p)
-        #
-
-        #    f"\n {pformat(p)}" + p2star(p) \
-        #        +  f"\n$\mathbf{{N^{2}$={ss[1]}\n$\mathbf{{N_{{ctrl}}}}$={ss[0]}"
-
-        #    text_y = 0.2 # 0.5 if max(conf_int) < 0 else max(conf_int) + 0.5
-        #    va = "bottom" # "bottom" if y > 0 else "top"
-        #    plt.annotate(text, xy=[x, text_y],
-        #                 fontsize=6.5*fs, ha="center", va=va)
-
-
-            # Add statistical asterisks
-            text = p2star(p)
-            text_x = x + 0.00
-            text_y =  min(conf_int) - textpads[c] \
-                    if y < 0 else max(conf_int) + textpads[c]
-            va = "top" if y < 0 else "bottom"
-            plt.annotate(text, xy=[text_x, text_y], fontsize=12*fs,
-                         ha="center", va=va, fontweight="bold",
-                         rotation=0)
+        # Add statistical asterisks
+        text = p2star(p)
+        text_x = x + 0.00
+        text_y =  min(conf_int) - textpads[c] \
+                if y < 0 else max(conf_int) + textpads[c]
+        va = "top" if y < 0 else "bottom"
+        plt.annotate(text, xy=[text_x, text_y], fontsize=12*fs,
+                     ha="center", va=va, fontweight="bold",
+                     rotation=0)
 
     # Format
     # Add title
@@ -408,7 +328,7 @@ for c, case in enumerate(cases):
 # Save
 # ------
 plt.tight_layout(h_pad=2)
-plt.savefig(OUTDIR + "figures/JAMA_meta_figure_cognition.pdf",
+plt.savefig(OUTDIR + f"figures/JAMA_meta_figure_med_cognition_{CTRS}.pdf",
             transparent=True)
 
 plt.close()

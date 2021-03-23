@@ -17,7 +17,7 @@ import seaborn as sns
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
 import matplotlib as mpl
-
+from IPython import get_ipython
 from tqdm import tqdm
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -27,8 +27,8 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 # =============================================================================
 # Filepaths
 HOMEDIR = os.path.abspath(os.path.join(__file__, "../../../")) + "/"
-SRCDIR = HOMEDIR + "results/volume/stats/"
-OUTDIR = HOMEDIR + "results/volume/"
+SRCDIR = HOMEDIR + "results/neurofunction/stats/"
+OUTDIR = HOMEDIR + "results/neurofunction/"
 
 #raise
 
@@ -37,8 +37,8 @@ OUTDIR = HOMEDIR + "results/volume/"
 #contrast="t2dm"
 
 # Open data
-t2 = pd.read_csv(SRCDIR + "pub_meta_volume_stats_diab_46.csv", index_col=0) #.iloc[-10:, :].reset_index()
-ag = pd.read_csv(SRCDIR + "pub_meta_volume_stats_age_46.csv", index_col=0) #.iloc[-10:, :].reset_index()
+t2 = pd.read_csv(SRCDIR + "pub_meta_neurofunction_roi_stats_diab_46.csv", index_col=0) #.iloc[-10:, :].reset_index()
+ag = pd.read_csv(SRCDIR + "pub_meta_neurofunction_roi_stats_age_46.csv", index_col=0) #.iloc[-10:, :].reset_index()
 
 # Nuemrify interval data (from str to list of floats)
 numerify_cols = lambda df: df.assign(
@@ -236,21 +236,21 @@ for i, ax in enumerate(f.axes[0]):
 # Age
 # -----
 ax = f.axes[0][0]
-ax.set_xlim([-1.19, 0.59])
+ax.set_xlim([-0.01, 0.01])
 ax.spines['right'].set_visible(False)
-ax.set_xlabel("Change in Gray Matter Volume\nAcross Age (% per year)")
+ax.set_xlabel("Percentage Change in ALFF per Year (%)")
 
 # T2DM
 # ----
 ax = f.axes[0][1]
-ax.set_xlim([-7.9, 4.3])
-ax.set_xlabel("Change in Gray Matter Volume\nCompared to T2DM- Controls (%)")
+ax.set_xlim([-0.08, 0.08])
+ax.set_xlabel("Difference in ALFF in T2DM+ vs T2DM- subjects (%)")
 
 # Figure formatting
 # ------
 
 # Add common suptitle
-plt.suptitle("Gray Matter Volume Changes Associated with Age and T2DM: " \
+plt.suptitle("Changes in ALFF Associated with Age and T2DM: " \
              "UK Biobank Dataset")
 
 ## Add common x label
@@ -259,7 +259,7 @@ plt.suptitle("Gray Matter Volume Changes Associated with Age and T2DM: " \
 
 
 plt.tight_layout(rect=[0, 0.05, 1, 0.98])
-plt.savefig(OUTDIR + "figures/JAMA_meta_figure_volume.pdf",
+plt.savefig(OUTDIR + "figures/JAMA_meta_figure_neurofunction_roi.pdf",
             transparent=True)
 plt.close("all")
 

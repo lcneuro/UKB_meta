@@ -222,7 +222,9 @@ def match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
     candidate_numbers_list = []
 
     # Iterate over all subjects positive to the treatment
-    for i, exp_sub in tqdm(enumerate(exp_subs.iterrows()), total=exp_subs.shape[0]):
+    for i, exp_sub in tqdm(enumerate(exp_subs.iterrows()),
+                           total=exp_subs.shape[0],
+                           desc="Matching subject: "):
 
         # Find control subjects that match along variables
         query_statement = " & ".join([f'{var} == {exp_sub[1][var]}' \
