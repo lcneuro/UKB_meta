@@ -54,12 +54,17 @@ from scipy import stats, special
 import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
+from IPython import get_ipython
+
+get_ipython().run_line_magic('cd', '..')
+from helpers.plotting_style import plot_pars, plot_funcs
+get_ipython().run_line_magic('cd', 'neurofunction')
+get_ipython().run_line_magic('matplotlib', 'auto')
 
 # %%
 # =============================================================================
 # Setup
 # =============================================================================
-plt.style.use("ggplot")
 
 # Filepaths
 HOMEDIR = os.path.abspath(os.path.join(__file__, "../../../")) + "/"
@@ -332,22 +337,15 @@ corr_pvals = corr_pvals_raw * special.comb(corr_pvals_raw.shape[0], 2)
 # =============================================================================
 # Visualize
 # =============================================================================
-def p2star(p, n=1):
-    """ Performs bonferroni correction as well if n!=1 """
 
-    if p > 0.05/n:
-        return ""
-    elif p > 0.01/n:
-        return "*"
-    elif p > 0.001/n:
-        return "**"
-    else:
-        return "***"
+# Unpack plotting utils
+fs, lw = plot_pars
+p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
 
 # Annotation
 rhos = corr_matrix.values.flatten()
 pvals = corr_pvals.values.flatten()
-annot_text = [f"{rhos[i]:.2f}\n" + p2star(pvals[i], 1) for i in range(len(rhos))]
+annot_text = [f"{rhos[i]:.2f}\n" + p2star(pvals[i]) for i in range(len(rhos))]
 annot_df = pd.DataFrame(np.array(annot_text).reshape(corr_matrix.shape))
 
 # Correlation plot

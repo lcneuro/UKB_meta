@@ -158,10 +158,11 @@ regressors_y = y.merge(regressors, on="eid", how="inner")
 # Drop feat column
 regressors_clean = regressors_y.drop(["feat"], axis=1)
 
-# TODO Temp: group vars
+# Group certain covariates (=coarse)
 age_bins = np.arange(0, 100, 5)
 duration_bins = np.arange(0, 100, 3)
 
+# Add grouped variables to df
 regressors_clean = regressors_clean.pipe(lambda df: df.assign(**{
         "age_group": pd.cut(df["age"], age_bins, include_lowest=True,
                             labels=age_bins[1:]),
@@ -191,7 +192,7 @@ for name, type_ in var_dict.items():
             type1="disc",
             type2=type_,
             save=True,
-            prefix=OUTDIR + "covariance/pub_meta_volume_covar_"
+            prefix=OUTDIR + f"covariance/pub_meta_med_volume_covar"
             )
 
     plt.close("all")

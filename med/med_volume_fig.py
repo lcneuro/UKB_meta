@@ -14,7 +14,11 @@ import seaborn as sns
 from tqdm import tqdm
 from IPython import get_ipython
 
+get_ipython().run_line_magic('cd', '..')
+from helpers.plotting_style import plot_pars, plot_funcs
+get_ipython().run_line_magic('cd', 'med')
 get_ipython().run_line_magic('matplotlib', 'inline')
+
 
 # Filepaths
 HOMEDIR = os.path.abspath(os.path.join(__file__, "../../../")) + "/"
@@ -25,35 +29,9 @@ OUTDIR = HOMEDIR + "results/med/volume/"
 CTRS = "metfonly_unmed"  # Contrast: diab or age
 PARC = 46  # Type of parcellation to use, options: 46 or 139
 
-# Styling
-fs=1.3
-lw=2
-
-plt.style.use("default")
-
-plt.rcParams['xtick.color'] = "black"
-plt.rcParams['ytick.color'] = "black"
-plt.rcParams['xtick.major.size'] = 10
-plt.rcParams['xtick.major.width'] = 2
-plt.rcParams['ytick.major.size'] = 10
-plt.rcParams['ytick.major.width'] = 2
-plt.rcParams['text.color'] = "black"
-plt.rcParams['axes.labelcolor'] = "black"
-plt.rcParams["font.weight"] = "bold"
-plt.rcParams["font.family"] = "DejaVu Sans"
-plt.rcParams["font.size"] = 12*fs
-plt.rcParams['xtick.labelsize'] = 13*fs
-plt.rcParams['ytick.labelsize']=12*fs
-plt.rcParams['axes.labelsize']=11*fs
-plt.rcParams['axes.labelweight'] = "bold"
-plt.rcParams['lines.linewidth'] = 3
-plt.rcParams['lines.markersize'] = 3
-plt.rcParams['legend.fontsize'] = 20*fs
-plt.rcParams['text.latex.preamble'] = [r'\boldmath']
-plt.rcParams['figure.titlesize'] = 16*fs
-plt.rcParams['figure.titleweight'] = "bold"
-plt.rcParams['axes.titlesize'] = 13*fs
-plt.rcParams['axes.titleweight'] = "bold"
+# Unpack plotting utils
+fs, lw = plot_pars
+p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
 
 # Load df
 df = pd \
@@ -71,30 +49,10 @@ df = pd \
                                       if val not in [" ", ""]])
                 }))
 
-# Astrix
-def p2star(p):
-    if p > 0.05:
-        return ""
-    elif p > 0.01:
-        return "*"
-    elif p > 0.001:
-        return "**"
-    else:
-        return "***"
-
 # Colors
-def colors_from_values(values, palette_name):
-    # normalize the values to range [0, 1]
-    normalized = (values - min(values)) / (max(values) - min(values))
-    # convert to indices
-    indices = np.round(normalized * (len(values) - 1)).astype(np.int32)
-    # use the indices to get the colors
-    palette = sns.color_palette(palette_name, len(values))
-    return np.array(palette).take(indices, axis=0)
-
 colors = colors_from_values(
         np.array(list(-df["beta"]) + [df["beta"].min(), df["beta"].max()]),
-        "BrBG")[:-2]
+        "RdBu")[:-2]
 
 colors_dict = {i: colors[i] for i in range(len(colors))}
 
@@ -154,9 +112,10 @@ for sp in ['bottom', 'top', 'right', 'left']:
 
 # Add labels
 ss = df["sample_sizes"]
-ax.set_xlabel("Difference in Gray Matter Volume\n{CTRS} (% of Avg)")
-plt.title("Gray Matter Volume as a Function of Metformin Medication Status:" \
-          "\nUK Biobank Dataset, Coarse Matched for Age, Disease Duration and Sex\n" \
+ax.set_xlabel(f"Percentage difference in gray matter volume\n{CTRS} (% of Avg)")
+
+plt.title("Gray matter volume as a function of metformin medication status:" \
+          f"\nUK Biobank dataset ({CTRS}, age, sex and disease duration matched)\n" \
           + f"(N$_{{metf+}}$={ss[0][1]:,}, N$_{{metf-}}$={ss[0][0]:,})")
 ax.set_ylabel("")
 

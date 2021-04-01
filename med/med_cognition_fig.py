@@ -15,6 +15,9 @@ import matplotlib.ticker as mtc
 import seaborn as sns
 from IPython import get_ipython
 
+get_ipython().run_line_magic('cd', '..')
+from helpers.plotting_style import plot_pars, plot_funcs
+get_ipython().run_line_magic('cd', 'med')
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 # =============================================================================
@@ -32,12 +35,13 @@ CTRS = "metfonly_unmed"
 # Case specific values
 cases = [CTRS]
 titles = [
-        ""
+        "Cognitive performance as a function of metformin medication status:" \
+          f"\nUK Biobank dataset ({CTRS}, age, sex and disease duration matched)\n"
         ]
 ylabeltexts = [
-        "Difference in Task Performance\n{cases[0]} (% of Avg)",
+        f"Percentage difference in task performance\n{cases[0]} (% of Avg)",
         ]
-colors = ["Purples"]
+colors = ["RdBu_r"]
 ylims = [[-18, 10]]
 sfs = [1e2]  # Marker size factors
 textpads = [0.1]  # Padding for text along y axis
@@ -48,113 +52,10 @@ xtickpads = [0]  # Paddong fo xticks
 #raise
 
 # %%
-# Suppprt functions
-# ------
 
-# Function to convert float p values to str
-def float_to_sig_digit_str(x, k):
-    """
-    Converts float to string with one significant figure
-    while refraining from scientific notation
-
-    inputs:
-        x: input float to be converted to string (float)
-        k: number of significant figures to keep (int)
-    """
-
-    import numpy as np
-
-    # Get decimal exponent of input float
-    exp = int(f"{x:e}".split("e")[1])
-
-    # Get rid of all digits but the first figure
-    x_fsf = round(x*10**-exp, k-1) * 10**exp
-
-    # Get rid of scientific notation and convert to string
-    x_str = np.format_float_positional(x_fsf)
-
-    # Return string output
-    return x_str
-
-# Add p values and sample sizes to plot
-def pformat(p):
-    """ Formats p values for plotting """
-
-#    if p < 0.001:
-#        return "$\it{P}$=" + float_to_sig_digit_str(p, 1)
-#    elif p > 0.995:
-#        return "$\it{P}$=1.0"
-#    else:
-#        return "$\it{P}$=" + f"{p:.2g}"
-
-    if p > 0.995:
-        return "$\it{P}$=1.00"
-    elif p >= 0.01:
-        return "$\it{P}$=" + f"{p:.2f}" # [1:]
-    elif p >= 0.001:
-        return "$\it{P}$=" + f"{p:.3f}" # [1:]
-    elif p < 0.001:
-        return "$\it{P}$<0.001"
-    else:
-        "INVALID!"
-
-
-def p2star(p):
-    if p > 0.05:
-        return ""
-    elif p > 0.01:
-        return "*"
-    elif p > 0.001:
-        return "**"
-    else:
-        return "***"
-
-# Colors
-def colors_from_values(values, palette_name):
-    # normalize the values to range [0, 1]
-    normalized = (values - min(values)) / (max(values) - min(values))
-    # convert to indices
-    indices = np.round(normalized * (len(values) - 1)).astype(np.int32)
-    # use the indices to get the colors
-    palette = sns.color_palette(palette_name, len(values))
-    return np.array(palette).take(indices, axis=0)
-
-
-# Styling
-# -------
-
-plt.style.use("default")
-#plt.style.use("ggplot")
-#sns.set_style("whitegrid")
-
-fs=1.3  # Fontsize
-lw=2  # Linewidth
-
-# Stylesheet
-plt.rcParams['xtick.color'] = "black"
-plt.rcParams['ytick.color'] = "black"
-plt.rcParams['xtick.major.size'] = 10
-plt.rcParams['figure.titlesize'] = 16*fs
-plt.rcParams['figure.titleweight'] = "bold"
-plt.rcParams['xtick.major.width'] = 2
-plt.rcParams['ytick.major.size'] = 10
-plt.rcParams['ytick.major.width'] = 2
-plt.rcParams['text.color'] = "black"
-plt.rcParams['axes.labelcolor'] = "black"
-plt.rcParams["font.weight"] = "bold"
-plt.rcParams["font.family"] = "DejaVu Sans"
-plt.rcParams["font.size"] = 12*fs
-plt.rcParams['xtick.labelsize']=10.5*fs
-plt.rcParams['ytick.labelsize']=11*fs
-plt.rcParams['axes.labelsize']=11*fs
-plt.rcParams['axes.labelweight'] = "bold"
-plt.rcParams['lines.linewidth'] = 3
-plt.rcParams['lines.markersize'] = 3
-plt.rcParams['legend.fontsize'] = 20*fs
-plt.rcParams['text.latex.preamble'] = [r'\boldmath']
-plt.rcParams['axes.titlesize'] = 13*fs
-plt.rcParams['axes.titleweight'] = "bold"
-#plt.rcParams['axes.axisbelow'] = True
+# Unpack plotting utils
+fs, lw = plot_pars
+p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
 
 # Load data
 # ------
@@ -187,8 +88,7 @@ for case in cases:
 # =============================================================================
 
 f = plt.figure(figsize=(19.2, 7))
-plt.suptitle("Cognitive Performance as a Function of Metformin Medication Status:" \
-          "\nUK Biobank Dataset, Coarse Matched for Age, Disease Duration and Sex\n")
+plt.suptitle("")
 
 # Panels A & B
 # ------
@@ -212,8 +112,7 @@ for c, case in enumerate(cases):
     # Populate plot
     # Colors
     colors_all = colors_from_values(
-        np.array(list(-df["beta"]) + [df["beta"].min() + 4, df["beta"].max()]),
-        colors[c])[:-2]
+        df["beta"], colors[c], vmin=min(df["beta"]), vmax=-min(df["beta"]))
 
     for i, item in enumerate(df.iterrows()):
 
@@ -262,7 +161,7 @@ for c, case in enumerate(cases):
     # Labels
     plt.ylabel(ylabeltexts[c])
     if c == len(cases)-1:
-        plt.xlabel("\nCognitive Domains")
+        plt.xlabel("\nCognitive domains")
 
     plt.gca().get_yaxis().set_major_formatter(
             mtc.FuncFormatter(lambda x, p: format(f"{x:.1f}")))

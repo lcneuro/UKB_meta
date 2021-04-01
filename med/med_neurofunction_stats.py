@@ -49,10 +49,10 @@ plt.style.use("ggplot")
 # Filepaths
 HOMEDIR = os.path.abspath(os.path.join(__file__, "../../../")) + "/"
 SRCDIR = HOMEDIR + "data/"
-OUTDIR = HOMEDIR + "results/neurofunction/"
+OUTDIR = HOMEDIR + "results/med/neurofunction/"
 
 # Inputs
-RLD = True  # Reload regressor matrices instead of computing them again
+RLD = False  # Reload regressor matrices instead of computing them again
 BATCH = 7  # Batch of preprocessed images to use
 
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
@@ -60,7 +60,7 @@ T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 excl_sub = [] # [1653701, 3361084, 3828231, 2010790, 2925838, 3846337,]  # Subjects
 ## to exlucde due to abnormal total gray matter neurofunctions
 
-CTRS = "diab"  # Contrast: diab or age
+CTRS = "metfonly_unmed"  # Contrast: diab or age
 CT = 12  # Cluster threshold for group level analysis (in voxels?)
 PTHR = 0.05  # Significance threshold for p values
 GM_THR = 0.5  # Threshold for gm mask. Voxels with Probability above this
@@ -71,8 +71,8 @@ VOLUME = 1000  # Cluster volume, mm3
 VOXEL_DIM = 2.4  # Voxel dimension in work space, assuming cubic voxels, mm
 
 regressors_dict = {
-    "diab": ["subject_label", "diab", "age", "sex", "college", "bmi", "ses"],
-    "age": ["subject_label", "age", "sex", "college", "bmi", "ses"],
+        CTRS: ["subject_label", CTRS, "duration", "age", "sex",
+                  "college", "bmi", "ses"]
     }
 
 print("Settings:\n" \
@@ -134,6 +134,17 @@ age_onset = age_onset \
     .query(f'(diab==0 & age_onset!=age_onset) or (diab==1 & age_onset>={T1DM_CO})') \
     [["eid", "age_onset"]]
 
+# Duration
+duration = age_onset \
+    .merge(age, on="eid", how="inner") \
+    .pipe(lambda df: df.assign(**{
+            "duration": df["age"] - df["age_onset"]})) \
+    .dropna(how="any") \
+    [["eid", "duration"]]
+
+# Load medication specific data
+med = pd.read_csv(SRCDIR + f"med/{CTRS}.csv")[["eid", CTRS]]
+
 # =============================================================================
 # Create gm mask
 # =============================================================================
@@ -161,102 +172,77 @@ gm_mask = image.resample_img(
 # Build regressor matrix
 # =============================================================================
 
+# Status
+print(f"Building regressor matrix with contrast [{CTRS}]")
+
 # Choose variables
 regressors = functools.reduce(
         lambda left, right: pd.merge(left, right, on="eid", how="inner"),
-        [diab, age, sex, college, ses, bmi, age_onset]
+        [diab, age, sex, college, ses, bmi, age_onset, med, duration]
         ) \
         .drop("age_onset", axis=1)
-
-
-# If contrast is age
-if CTRS == "age":
-    # Exclude subjects with T2DM
-    regressors = regressors.query("diab == 0")
 
 # Inner merge regressors with subjects for whom ALFF has been computed
 regressors_clean = regressors.merge(img_subs, on="eid")
 
-# Let's see what matching would look like
+# Group certain covariates (=coarse)
+age_bins = np.arange(0, 100, 5)
+duration_bins = np.arange(0, 100, 3)
+
+# Add grouped variables to df
+regressors_clean = regressors_clean.pipe(lambda df: df.assign(**{
+        "age_group": pd.cut(df["age"], age_bins, include_lowest=True,
+                            labels=age_bins[1:]),
+        "duration_group": pd.cut(df["duration"], duration_bins, include_lowest=True,
+                                 labels=duration_bins[1:]),
+            }))
 
 # Save full regressor matrix
-regressors_clean.to_csv(OUTDIR + f"regressors/pub_meta_neurofunction_full_regressors_{CTRS}.csv")
+regressors_clean.to_csv(OUTDIR + f"regressors/pub_meta_med_neurofunction_full_" \
+                        f"regressors_{CTRS}.csv")
 
-if CTRS == "age":
 
-    # Interactions among independent variables
-    var_dict = {
-            "sex": "disc",
-            "college": "disc",
-            "ses": "disc",
-            "bmi": "cont"
-            }
+# Interactions among independent variables
+var_dict = {
+        "age": "cont",
+        "sex": "disc",
+        "college": "disc",
+        "ses": "disc",
+        "bmi": "cont",
+        "duration": "cont"
+        }
 
-    for name, type_ in var_dict.items():
+for name, type_ in var_dict.items():
 
-        check_covariance(
-                regressors_clean,
-                var1=name,
-                var2="age",
-                type1=type_,
-                type2="cont",
-                save=True,
-                prefix=OUTDIR + "covariance/pub_meta_neurofunction_covar_"
-                )
+    check_covariance(
+            regressors_clean,
+            var1=CTRS,
+            var2=name,
+            type1="disc",
+            type2=type_,
+            save=True,
+            prefix=OUTDIR + f"covariance/pub_meta_med_neurofunction_{CTRS}_covar_"
+            )
 
-        plt.close("all")
+    plt.close("all")
 
-    if RLD == False:
-        # Match
-        regressors_matched = match(
-                df=regressors_clean,
-                main_var="sex",
-                vars_to_match=["age"],
-                N=1,
-                random_state=1
-                )
-
-if CTRS == "diab":
-
-    # Interactions among independent variables
-    var_dict = {
-            "age": "cont",
-            "sex": "disc",
-            "college": "disc",
-            "ses": "disc",
-            "bmi": "cont"
-            }
-
-    for name, type_ in var_dict.items():
-
-        check_covariance(
-                regressors_clean,
-                var1="diab",
-                var2=name,
-                type1="disc",
-                type2=type_,
-                save=True,
-                prefix=OUTDIR + "covariance/pub_meta_neurofunction_covar_"
-                )
-
-        plt.close("all")
-
-    if RLD == False:
-        # Match
-        regressors_matched = match(
-                df=regressors_clean,
-                main_var="diab",
-                vars_to_match=["age", "sex"],
-                N=1,
-                random_state=1
-                )
+if RLD == False:
+    # Match
+    regressors_matched = match(
+            df=regressors_clean,
+            main_var=CTRS,
+            vars_to_match=["age_group", "sex", "duration_group"],
+            N=1,
+            random_state=1
+            )
 
 # Status
 print("Covariance checked.")
 
 if RLD == False:
     # Save matched regressors matrix
-    regressors_matched.to_csv(OUTDIR + f"regressors/pub_meta_neurofunction_matched_regressors_{CTRS}.csv")
+    regressors_matched.to_csv(OUTDIR + f"regressors/pub_meta_med_neurofunction_" \
+                              f"matched_regressors_{CTRS}.csv")
 
     # Status
     print("Matching performed.")
@@ -274,7 +260,7 @@ print("Loading regressors.")
 # Load regressors
 regressors_matched = pd \
     .read_csv(OUTDIR + \
-         f"regressors/pub_meta_neurofunction_matched_regressors_{CTRS}.csv",
+         f"regressors/pub_meta_med_neurofunction_matched_regressors_{CTRS}.csv",
          index_col=0) \
     .rename({"eid": "subject_label"}, axis=1)
 
@@ -321,7 +307,7 @@ z_map = GLM.compute_contrast(second_level_contrast=CTRS,
                              output_type="z_score")
 
 # Save Z map
-nib.save(z_map, OUTDIR + f"stats/pub_meta_neurofunction_zmap_{MDL.lower()}_" \
+nib.save(z_map, OUTDIR + f"stats/pub_meta_med_neurofunction_zmap_{MDL.lower()}_" \
                  f"batch{BATCH}_GM_{GM_THR}_contrast_{CTRS}_{EXTRA}.nii")
 
 
@@ -339,7 +325,7 @@ thresholded_map, threshold = map_threshold(
 thr_map_nan = image.math_img('np.where(img == 0, np.nan, img)', img=thresholded_map)
 
 # Export thresholded image
-nib.save(thr_map_nan, OUTDIR + f"stats/pub_meta_neurofunction_statthr_" \
+nib.save(thr_map_nan, OUTDIR + f"stats/pub_meta_med_neurofunction_statthr_" \
          f"{MDL.lower()}_batch{BATCH}_GM_{GM_THR}_contrast_{CTRS}_uc{CT}_" \
          f"fdr{PTHR}_{EXTRA}.nii")
 
@@ -500,10 +486,8 @@ for label in clusters["label"]:
     print(f"Fitting model for {label}.")
 
     # Formula
-    if CTRS == "age":
-        formula = f"{label} ~ age + C(sex) + C(college) + C(ses) + bmi"
-    if CTRS == "diab":
-        formula = f"{label} ~ C(diab) + age + C(sex) + C(college) + C(ses) + bmi"
+    formula = f"{label} ~ C({CTRS}) + age + C(sex) + C(college) + C(ses)" \
+            "+ bmi + duration"
 
     # Construct OLS model
     model = smf.ols(formula, data=df)
@@ -512,7 +496,7 @@ for label in clusters["label"]:
     results = model.fit()
 
     # Save results
-    with open(OUTDIR + f"stats_misc/pub_meta_neurofunction_regression_table" \
+    with open(OUTDIR + f"stats_misc/pub_meta_med_neurofunction_regression_table" \
               f"_{label}_{CTRS}.html", "w") as file:
         file.write(results.summary().as_html())
 
@@ -521,30 +505,29 @@ for label in clusters["label"]:
         results,
         df,
         prefix=OUTDIR + \
-        f"stats_misc/pub_meta_neurofunction_stats_assumptions_{label}_{CTRS}"
+        f"stats_misc/pub_meta_med_neurofunction_stats_assumptions_{label}_{CTRS}"
         )
 
-    if CTRS == "diab":
 
-        # Status
-        print(f"Visualizing relationships for {label}.")
+    # Status
+    print(f"Visualizing relationships for {label}.")
 
-        # Bin age
-        bins = np.arange(0, 100, 5)
-        df["age_group"] = pd.cut(df["age"], bins).astype(str)
+    # Bin age
+    bins = np.arange(0, 100, 5)
+    df["age_group"] = pd.cut(df["age"], bins).astype(str)
 
-        # Sort per age
-        df = df.sort_values(by="age")
+    # Sort per age
+    df = df.sort_values(by="age")
 
-        # Plot for age*diabetes for current label
-        plt.figure()
-        sns.lineplot(data=df, x="age_group", y=f"{label}",
-                   hue="diab", ci=68, palette=sns.color_palette(["black", "red"]),
-                   err_style="bars", marker="o", sort=False,
-                   err_kws={"capsize": 5}) \
+    # Plot for age*ctrs for current label
+    plt.figure()
+    sns.lineplot(data=df, x="age_group", y=f"{label}",
+               hue=CTRS, ci=68, palette=sns.color_palette(["black", "red"]),
+               err_style="bars", marker="o", sort=False,
+               err_kws={"capsize": 5}) \
 
-        plt.savefig(OUTDIR + f"stats_misc/pub_meta_neurofunction_age-diab-plot_{label}.pdf")
-        plt.close()
+    plt.savefig(OUTDIR + f"stats_misc/pub_meta_med_neurofunction_age-ctrs-plot_{label}.pdf")
+    plt.close()
 
 # Status
 print("Finished execution.")

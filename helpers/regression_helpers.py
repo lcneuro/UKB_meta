@@ -107,6 +107,32 @@ def check_covariance(df, var1, var2, type1, type2, save=False, prefix=None):
 
 
     # If cont + disc -> #TODO
+    if (type1 == "cont") & (type2 == "disc"):
+        # Extract
+        gs = tdf.groupby(var2).groups
+        g1 = tdf.loc[gs[0], :][var1]
+        g2 = tdf.loc[gs[1], :][var1]
+
+        # Statistics
+        ttest = stats.ttest_ind(g1, g2)
+        bicorr = stats.pointbiserialr(tdf[var2], tdf[var1])
+        text = f'Covariance: \n{var2} vs {var1}\n####\n' \
+               f'{var2}=0 mean: {g1.mean():.2f}\n{var2}=1 mean: {g2.mean():.2f}\n' \
+               f't-test: T={ttest[0]:.2f}, p={ttest[1]:.2e}\n' \
+               f"Point biserial r: r={bicorr.correlation:.3f}, p={bicorr.pvalue:.2e}"
+        print(text)
+
+        # Visualize
+        plt.figure(figsize=(12, 6))
+        plt.subplot(1, 2, 1)
+        plt.hist(g1, alpha=0.7, bins=30, label=f"{var2}=0", density=True)
+        plt.hist(g2, alpha=0.7, bins=30, label=f"{var2}=1", density=True)
+        plt.xlabel(var1)
+        plt.ylabel("density")
+        plt.legend()
+        plt.subplot(1, 2, 2)
+        plt.annotate(text, xy=[0.3, 0.65], xycoords="axes fraction")
+        plt.axis('off')
 
     # Add in some space to the console
     print("\n\n")
@@ -260,6 +286,92 @@ def match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
 
     # Concat into df
     mdf = pd.concat(mdf_list, axis=0)
+
+    # Analyze candidate availability
+    candidate_numbers = pd.DataFrame(candidate_numbers_list, columns=["count"])
+    print(f"Matching info:\nmatched subjects: N={mdf.shape[0]}\n", \
+            "candidates:\n", candidate_numbers.describe())
+
+    return mdf
+
+# Multi-matching function
+def multi_match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
+    """
+    Function to perform matching across chosen independent variables.
+    Method: exact matching across specified covariates.
+    Considers multiple (2+) groups across main_var.
+    But groups have to be complete.
+    Practically speaking: good for matching across a variable with multiple
+    discrete values (2+), but not ideal for continuous variables with many values.
+    """
+
+
+    # Separate items per main variable
+    groups = df.groupby(main_var)
+    groups_dir = {key: df.loc[indexes] for key, indexes in groups.groups.items()}
+    keys = list(groups.groups.keys())
+
+    # List of matched items, later to serve as a df
+    mdf_list = []
+
+    # List to store number of available subjects
+    candidate_numbers_list = []
+
+    # Iterate over all subjects in reference group
+    for i, ref_sub in tqdm(enumerate(groups_dir[keys[0]].iterrows()),
+                           total=groups_dir[keys[0]].shape[0],
+                           desc="Matching subject: "):
+
+        # Find control subjects that match along variables
+        query_statement = " & ".join([f'{var} == {ref_sub[1][var]}' \
+                                      for var in vars_to_match])
+
+        # Start candidates dictionary
+        candidates = {}
+
+        # Iterate over all groups outside of reference
+        for i, (key, subs) in enumerate(groups_dir.items()):
+            # Skip reference group
+            if i == 0:
+                continue
+
+            # Query and add to candidates
+            candidates[key] = subs.query(query_statement)
+
+        # Store candidate numbers
+        min_num = min(len(val) for _, val in candidates.items())
+        candidate_numbers_list.append(min_num)
+
+        # If there is at least 1 match
+        if min_num > 0:
+
+            # If found: add ref subject to mdf
+            mdf_list.append(ref_sub[1].to_frame().T)
+
+            # Iterate over all groups outside of reference
+            for i, (key, subs) in enumerate(candidates.items()):
+
+                # Pick from candidates randomly
+                picked_candidate = subs.sample(n=N, random_state=random_state)
+
+                # If found: Take out subject from ctrl_subs hat
+                groups_dir[key] = groups_dir[key] \
+                    .merge(
+                        picked_candidate,
+                        on=groups_dir[key].columns.to_list(),
+                        how="left",
+                        indicator=True
+                        ) \
+                    .query('_merge != "both"').drop("_merge", axis=1)
+
+                # If found: add subject to mdf
+                mdf_list.append(picked_candidate)
+
+        else:
+            print(f'\nNo match found for: {int(ref_sub[1]["eid"])}')
+
+    # Concat into df
+    mdf = pd.concat(mdf_list, axis=0).convert_dtypes()
 
     # Analyze candidate availability
     candidate_numbers = pd.DataFrame(candidate_numbers_list, columns=["count"])

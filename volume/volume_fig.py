@@ -17,9 +17,12 @@ import seaborn as sns
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
 import matplotlib as mpl
-
+from IPython import get_ipython
 from tqdm import tqdm
 
+get_ipython().run_line_magic('cd', '..')
+from helpers.plotting_style import plot_pars, plot_funcs
+get_ipython().run_line_magic('cd', 'volume')
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 # =============================================================================
@@ -90,67 +93,18 @@ sub_dfs = [df.query('contrast == "age"').reset_index(drop=True),
 # Plot
 # =============================================================================
 
-# Style
-fs=1.3
-lw=2
-plt.style.use("default")
-#plt.style.use("ggplot")
-
-#sns.set_style("whitegrid")
-
-plt.rcParams['xtick.color'] = "black"
-plt.rcParams['ytick.color'] = "black"
-plt.rcParams['xtick.major.size'] = 10
-plt.rcParams['xtick.major.width'] = 2
-plt.rcParams['ytick.major.size'] = 10
-plt.rcParams['ytick.major.width'] = 2
-plt.rcParams['text.color'] = "black"
-plt.rcParams['axes.labelcolor'] = "black"
-plt.rcParams["font.weight"] = "bold"
-plt.rcParams["font.family"] = "DejaVu Sans"
-plt.rcParams["font.size"] = 12*fs
-plt.rcParams['xtick.labelsize'] = 13*fs
-plt.rcParams['ytick.labelsize']=12*fs
-plt.rcParams['axes.labelsize']=11*fs
-plt.rcParams['axes.labelweight'] = "bold"
-plt.rcParams['lines.linewidth'] = 3
-plt.rcParams['lines.markersize'] = 3
-plt.rcParams['legend.fontsize'] = 20*fs
-plt.rcParams['text.latex.preamble'] = [r'\boldmath']
-plt.rcParams['figure.titlesize'] = 16*fs
-plt.rcParams['figure.titleweight'] = "bold"
-plt.rcParams['axes.titlesize'] = 13*fs
-plt.rcParams['axes.titleweight'] = "bold"
-
-
-# Astrix
-def p2star(p):
-    if p > 0.05:
-        return ""
-    elif p > 0.01:
-        return "*"
-    elif p > 0.001:
-        return "**"
-    else:
-        return "***"
+# Unpack plotting utils
+fs, lw = plot_pars
+p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
 
 # Colors
-def colors_from_values(values, palette_name):
-    # normalize the values to range [0, 1]
-    normalized = (values - min(values)) / (max(values) - min(values))
-    # convert to indices
-    indices = np.round(normalized * (len(values) - 1)).astype(np.int32)
-    # use the indices to get the colors
-    palette = sns.color_palette(palette_name, len(values))
-    return np.array(palette).take(indices, axis=0)
-
 colors_t2 = colors_from_values(
         np.array(list(-t2["beta"]) + [t2["beta"].min(), t2["beta"].max()]),
         "seismic_r")[:-2]
 
 colors_age = colors_from_values(
         np.array(list(-ag["beta"]) + [ag["beta"].min() + 0, ag["beta"].max()]),
-        "PRGn")[:-2]
+        "PuOr")[:-2]
 
 colors = np.concatenate((colors_age, colors_t2), axis=0)
 
@@ -176,9 +130,9 @@ f = sns.FacetGrid(data=df, col="contrast", height=16, aspect=0.6,
 # Axis titles
 ss = [t2["sample_sizes"][0], ag["sample_sizes"][0]]
 title_texts = [
-        f"Age (T2DM- only, Sex-Matched)\nN$_{{}}$={ss[1][0]:,}",
-        f"T2DM (T2DM+ vs T2DM-, Age and Sex-Matched)\nN$_{{T2DM+}}$={ss[0][1]:,}, " \
-        f"N$_{{T2DM-}}$={ss[0][0]:,}"
+        f"Age (T2DM– only, sex-matched)\nN$_{{}}$={ss[1][0]:,}",
+        f"T2DM (T2DM+ vs. T2DM–, age and sex-Matched)\nN$_{{T2DM+}}$={ss[0][1]:,}, " \
+        f"N$_{{T2DM–}}$={ss[0][0]:,}"
         ]
 
 
@@ -238,20 +192,20 @@ for i, ax in enumerate(f.axes[0]):
 ax = f.axes[0][0]
 ax.set_xlim([-1.19, 0.59])
 ax.spines['right'].set_visible(False)
-ax.set_xlabel("Change in Gray Matter Volume\nAcross Age (% per year)")
+ax.set_xlabel("Percentage change in gray matter volume\nacross age (% per year)")
 
 # T2DM
 # ----
 ax = f.axes[0][1]
 ax.set_xlim([-7.9, 4.3])
-ax.set_xlabel("Change in Gray Matter Volume\nCompared to T2DM- Controls (%)")
+ax.set_xlabel("Percentage difference in gray matter volume\nT2DM+ vs. T2DM– (%)")
 
 # Figure formatting
 # ------
 
 # Add common suptitle
-plt.suptitle("Gray Matter Volume Changes Associated with Age and T2DM: " \
-             "UK Biobank Dataset")
+plt.suptitle("\t\t\t"*2 + "Gray matter volume changes associated with age and T2DM: " \
+             "UK Biobank dataset")
 
 ## Add common x label
 #plt.gcf().text(0.6, 0.03, "Change In Gray Matter Volume (%)", ha='center',

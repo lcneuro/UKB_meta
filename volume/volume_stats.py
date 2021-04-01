@@ -187,7 +187,7 @@ if CTRS == "age":
                 type1=type_,
                 type2="cont",
                 save=True,
-                prefix=OUTDIR + "covariance/pub_meta_volume_covar_"
+                prefix=OUTDIR + "covariance/pub_meta_volume_covar"
                 )
 
         plt.close("all")
