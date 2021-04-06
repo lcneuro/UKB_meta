@@ -41,13 +41,22 @@ titles = [
 ylabeltexts = [
         f"Percentage difference in task performance\n{cases[0]} (% of Avg)",
         ]
-colors = ["RdBu_r"]
+colors = ["coolwarm"]
 ylims = [[-18, 10]]
 sfs = [1e2]  # Marker size factors
 textpads = [0.1]  # Padding for text along y axis
 xtickrots = [0]  # Rotation of xticks
 xtickvas = ["top"]  # Vertical alignment for xticks
 xtickpads = [0]  # Paddong fo xticks
+
+# Custom label order for plot
+label_order = [
+        "Executive\nFunction",
+        "Processing\nSpeed",
+        "Reaction\nTime",
+        "Short-Term\nMemory",
+        "Abstract\nReasoning"
+        ]
 
 #raise
 
@@ -106,6 +115,9 @@ for c, case in enumerate(cases):
     # Sort labels alphabetically
     df = df.sort_values(by="label", ignore_index=True)
 
+    # Pick custom order
+    df = df.set_index("label").loc[label_order].reset_index()
+
     # Pick subplot
     plt.subplot(len(cases), 1, c+1)
 
@@ -126,6 +138,9 @@ for c, case in enumerate(cases):
         # Blob for representing value and sample size
         plt.scatter(x=x, y=y, s=sum(ss)**2/sfs[c], color=colors_all[i])
                     #"mediumblue")
+
+        # Small dot to represent center
+        plt.scatter(x=x, y=y, s=50, color="k")
 
         # Errorbars
         plt.errorbar(x, y, yerr=conf_dist, capsize=12, capthick=lw,

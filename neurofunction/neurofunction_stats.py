@@ -322,7 +322,7 @@ z_map = GLM.compute_contrast(second_level_contrast=CTRS,
 
 # Save Z map
 nib.save(z_map, OUTDIR + f"stats/pub_meta_neurofunction_zmap_{MDL.lower()}_" \
-                 f"batch{BATCH}_GM_{GM_THR}_contrast_{CTRS}_{EXTRA}.nii")
+                 f"batch{BATCH}_GM_{GM_THR}_contrast_{CTRS}{EXTRA}.nii")
 
 
 # Threshold voxel maps
@@ -341,7 +341,7 @@ thr_map_nan = image.math_img('np.where(img == 0, np.nan, img)', img=thresholded_
 # Export thresholded image
 nib.save(thr_map_nan, OUTDIR + f"stats/pub_meta_neurofunction_statthr_" \
          f"{MDL.lower()}_batch{BATCH}_GM_{GM_THR}_contrast_{CTRS}_uc{CT}_" \
-         f"fdr{PTHR}_{EXTRA}.nii")
+         f"fdr{PTHR}{EXTRA}.nii")
 
 
 # Status

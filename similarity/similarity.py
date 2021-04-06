@@ -107,11 +107,10 @@ for ct in contrasts:
                       index_col=None) \
             .pipe(lambda df:
                 df.assign(**{
-                        "index": np.arange(df.shape[0]) + 1,
                         "label": df["label"],
                         "value": df[vol_field]
                         })) \
-            [["index", "label", "value"]]
+            [["label", "value"]]
 
 #"label": df["label"].apply(lambda item: (" ").join(item.split("_"))),
 
@@ -255,9 +254,10 @@ def coarsen_effect(file):
 
         # ========
         # Store
-        df_list.append(pd.DataFrame([value, label, res]) \
-                       .T.set_axis(["index", "label", "value"], axis=1) \
+        df_list.append(pd.DataFrame([label, res]) \
+                       .T.set_axis(["label", "value"], axis=1) \
                        .astype({"value": float}))
+
 
     df = pd.concat(df_list, axis=0)
 
@@ -293,7 +293,7 @@ keys = [
 
 # Helper functions
 unique_col = lambda key: data_list[key].rename({"value": key}, axis=1)
-merge = lambda a, b: a.merge(b, on=["index", "label"], how="inner")
+merge = lambda a, b: a.merge(b, on=["label"], how="inner")
 
 # Merge dfs
 df = functools.reduce(merge, list(map(unique_col, keys)))
@@ -314,19 +314,20 @@ df.columns = list(map(lambda x: x.replace("_", " "), list(df.columns)))
 # =============================================================================
 
 # Compute correlations
-corr_matrix = df.set_index(["index", "label"]).corr(method=CORRMET)
+#corr_matrix = df.set_index(["index", "label"]).corr(method=CORRMET)
 
 # Compute staistical significance of correlations
 def comp_corr_pvals(df):
     df = df.dropna()._get_numeric_data()
     dfcols = pd.DataFrame(columns=df.columns)
+    corr_matrix = dfcols.transpose().join(dfcols, how='outer')
     pvalues = dfcols.transpose().join(dfcols, how='outer')
     for r in df.columns:
         for c in df.columns:
-            pvalues[r][c] = eval(f"stats.{CORRMET}r(df[r], df[c])")[1]
-    return pvalues.astype(float)
+            corr_matrix[r][c], pvalues[r][c] = eval(f"stats.{CORRMET}r(df[r], df[c])")
+    return [corr_matrix.astype(float), pvalues.astype(float)]
 
-corr_pvals_raw = comp_corr_pvals(df)
+corr_matrix, corr_pvals_raw = comp_corr_pvals(df)
 # Not bonferroni corrected yet! Correction takes place below!
 
 # Perform Bonferroni correction

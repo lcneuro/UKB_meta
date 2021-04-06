@@ -37,7 +37,7 @@ MDL = "ALFF"
 PTHR = 0.05
 UC = 12
 GM_THR = 0.5  # GM threshold
-cut_coords = (14, 10, 16)
+cut_coords = (12, 8, 16)
 
 #raise
 

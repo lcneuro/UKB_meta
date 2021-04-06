@@ -8,7 +8,7 @@ Created on Fri Mar  5 20:58:02 2021
 
 import pandas as pd
 import numpy as np
-from scipy import stats
+from scipy import stats, spatial
 import matplotlib.pyplot as plt
 import seaborn as sns
 import statsmodels.api as sm
@@ -234,8 +234,16 @@ def check_assumptions(results, sdf, prefix):
 def match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
     """
     Function to perform matching across chosen independent variables.
-    Method: exact matching across specified covariates.
+    Method: exact matching across specified covariates, remaining covariates
+    are chosen based on original mahabonis distance.
     """
+
+    # For distance based selection: exclude treatment col + ones for which matching
+    #is happening
+    rr = df.set_index("eid").drop([main_var] + vars_to_match , axis=1)
+
+    # Standardize covariates by taking z scores
+    rr_std = (rr - rr.mean(axis=0))/rr.std(axis=0)
 
     # Separate items per main variable
     exp_subs = df.query(f"{main_var} == 1")
@@ -247,27 +255,40 @@ def match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
     # List to store number of available subject
     candidate_numbers_list = []
 
-    # Iterate over all subjects positive to the treatment
-    for i, exp_sub in tqdm(enumerate(exp_subs.iterrows()),
-                           total=exp_subs.shape[0],
-                           desc="Matching subject: "):
+    exp_subs.sample(frac=1)
+
+    # Iterate over all subjects positive to the treatment, use random order!
+    for i, exp_sub in tqdm(enumerate(
+                exp_subs.sample(frac=1, random_state=random_state).iterrows()),
+                total=exp_subs.shape[0],
+                desc="Matching subject: "):
 
         # Find control subjects that match along variables
         query_statement = " & ".join([f'{var} == {exp_sub[1][var]}' \
                                       for var in vars_to_match])
-
         candidates = ctrl_subs.query(query_statement)
 
         # Store numbers
         candidate_numbers_list.append(len(candidates))
 
         # If there is at least 1 match
-        if candidates.shape[0] > 0:
+        if candidates.shape[0] >= N:
 
-            # Pick from candidates randomly
-            picked_ctrl_subs = candidates.sample(n=N, random_state=random_state)
+            # Compute distances from exp to ctrl subs based on remaining covariates
+            dists = spatial.distance_matrix(
+                rr_std.loc[exp_sub[1]["eid"]].to_numpy()[None, :],
+                rr_std.loc[candidates["eid"]]
+                )
 
-            # If found: Take out subject from ctrl_subs hat
+            # Pick top N closest matches
+            picked_ctrl_subs = candidates \
+                .assign(**{"dist": dists[0]}).sort_values(by="dist").iloc[:N, :] \
+                .drop("dist", axis=1)
+
+    #        # Pick from candidates randomly
+    #        picked_ctrl_subs = candidates.sample(n=N, random_state=random_state)
+
+            # Take out subjects from ctrl_subs hat
             ctrl_subs = ctrl_subs \
                 .merge(
                     picked_ctrl_subs,
@@ -277,12 +298,15 @@ def match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
                     ) \
                 .query('_merge != "both"').drop("_merge", axis=1)
 
-            # If found: add both subjects to mdf
+            # Add both exp and matched subjects to mdf
             mdf_list.append(exp_sub[1].to_frame().T)
             mdf_list.append(picked_ctrl_subs)
 
         else:
-            print(f'\nNo match found for: {int(exp_sub[1]["eid"])}')
+            pass
+    #        print(f'\nNo match found for: {int(exp_sub[1]["eid"])}')
+
+
 
     # Concat into df
     mdf = pd.concat(mdf_list, axis=0)
@@ -298,7 +322,8 @@ def match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
 def multi_match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
     """
     Function to perform matching across chosen independent variables.
-    Method: exact matching across specified covariates.
+    Method: exact matching across specified covariates. No distance matching
+    involved besides the exact matching. (-><- match function)
     Considers multiple (2+) groups across main_var.
     But groups have to be complete.
     Practically speaking: good for matching across a variable with multiple
@@ -343,7 +368,7 @@ def multi_match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
         candidate_numbers_list.append(min_num)
 
         # If there is at least 1 match
-        if min_num > 0:
+        if min_num >= N:
 
             # If found: add ref subject to mdf
             mdf_list.append(ref_sub[1].to_frame().T)
@@ -368,7 +393,8 @@ def multi_match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
                 mdf_list.append(picked_candidate)
 
         else:
-            print(f'\nNo match found for: {int(ref_sub[1]["eid"])}')
+            pass
+#            print(f'\nNo match found for: {int(ref_sub[1]["eid"])}')
 
     # Concat into df
     mdf = pd.concat(mdf_list, axis=0).convert_dtypes()

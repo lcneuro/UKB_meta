@@ -40,7 +40,7 @@ plt.rcParams['lines.linewidth'] = 3
 plt.rcParams['lines.markersize'] = 3
 plt.rcParams['legend.fontsize'] = 14*fs
 plt.rcParams['legend.title_fontsize'] = 14*fs
-plt.rcParams['text.latex.preamble'] = [r'\boldmath']
+plt.rcParams['text.latex.preamble'] = r'\boldmath'
 plt.rcParams['figure.titlesize'] = 18*fs
 plt.rcParams['figure.titleweight'] = "bold"
 plt.rcParams['axes.titlesize'] = 15*fs
@@ -72,7 +72,7 @@ def p2star(p):
 def colors_from_values(values, palette_name, vmin=None, vmax=None):
     """ Function to build colormaps from lists """
     # Get boundaries
-    if (vmin!=None) & (vmax!=None):
+    if (vmin==None) | (vmax==None):
         vmin = min(values)
         vmax = max(values)
 

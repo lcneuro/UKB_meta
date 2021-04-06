@@ -51,7 +51,7 @@ ylabeltexts = [
         "Standardized mean difference\nT2DM+ vs. T2DM- (Cohen's d)"
         ]
 colors = ["Purples", "Blues", "bone_r"]
-ylims = [[-2.5, 0.3], [-15.5, 1.5], [-0.75, 0.2]]
+ylims = [[-2.5, 0.3], [-15.5, 2.5], [-0.75, 0.2]]
 sfs = [4e4, 1e3, 0.2]  # Marker size factors
 textpads = [0.1, 0.2, 0.02]  # Padding for text along y axis
 xtickrots = [0, 0, 0]  # Rotation of xticks
@@ -115,11 +115,6 @@ for case in cases:
     data[case] = df
 
 
-# %% TEMP
-
-[label for label in df["label"] if label not in list(order_dict.keys())]
-
-
 # %%
 # =============================================================================
 # Figure
@@ -173,6 +168,9 @@ for c, case in enumerate(cases):
             plt.scatter(x=x, y=y, s=sum(ss)**2/sfs[c], color=colors_all[i])
                         #"mediumblue")
 
+            # Plot center of estimate
+            plt.scatter(x=x, y=y, s=50, color="k")
+
             # Errorbars
             plt.errorbar(x, y, yerr=conf_dist, capsize=12, capthick=lw,
                          elinewidth=lw, color="black")
@@ -214,7 +212,10 @@ for c, case in enumerate(cases):
             conf_dist = abs(y - np.array(conf_int))[:, None]
 
             # Blob for representing value and sample size
-            plt.scatter(x=x, y=y, s=K**2/sfs[c], color=colors_all[i], zorder=2)
+            plt.scatter(x=x, y=y, s=K**2/sfs[c], color=colors_all[i])
+
+            # Plot center of estimate
+            plt.scatter(x=x, y=y, s=50, color="k")
 
             # Errorbars
             plt.errorbar(x, y, yerr=conf_dist, capsize=18, capthick=lw,

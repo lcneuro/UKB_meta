@@ -40,13 +40,13 @@ SRCDIR = HOMEDIR + "data/"
 OUTDIR = HOMEDIR + "results/cognition/"
 
 # Inputs
-CTRS = "age"  # Contrast: diab or age
+CTRS = "diab"  # Contrast: diab or age
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
 excl_sub = []  # SUbjects to exlude, if any
-RLD = True  # Reload regressor matrices instead of computing them again
+RLD = False  # Reload regressor matrices instead of computing them again
 
-raise
+#raise
 
 # %%
 # =============================================================================
@@ -153,7 +153,7 @@ for i, feat in enumerate(features):
     # Clean feature
     # -----
     # Extract data, drop non-positive records
-    data_feat = data.query(f'`{feat}` > 0')[["eid", feat]]
+    data_feat = data.dropnaquery(f'`{feat}` > 0')[["eid", feat]]
 
     # Constrain ivs to only those samples that have y values
     regressors_y = regressors \

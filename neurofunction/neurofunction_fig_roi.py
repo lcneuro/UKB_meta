@@ -150,7 +150,7 @@ colors_t2 = colors_from_values(
 
 colors_age = colors_from_values(
         np.array(list(-ag["beta"]) + [ag["beta"].min() + 0, ag["beta"].max()]),
-        "PRGn")[:-2]
+        "PuOr")[:-2]
 
 colors = np.concatenate((colors_age, colors_t2), axis=0)
 
@@ -176,8 +176,8 @@ f = sns.FacetGrid(data=df, col="contrast", height=16, aspect=0.6,
 # Axis titles
 ss = [t2["sample_sizes"][0], ag["sample_sizes"][0]]
 title_texts = [
-        f"Age (T2DM- only, Sex-Matched)\nN$_{{}}$={ss[1][0]:,}",
-        f"T2DM (T2DM+ vs T2DM-, Age and Sex-Matched)\nN$_{{T2DM+}}$={ss[0][1]:,}, " \
+        f"Age (T2DM- only, sex-matched)\nN$_{{}}$={ss[1][0]:,}",
+        f"T2DM (T2DM+ vs T2DM-, age and sex-matched)\nN$_{{T2DM+}}$={ss[0][1]:,}, " \
         f"N$_{{T2DM-}}$={ss[0][0]:,}"
         ]
 
@@ -217,7 +217,7 @@ for i, ax in enumerate(f.axes[0]):
 
         ha = "right" if x < 0 else "left"
 
-        xoffset = 0.15 if x == 0 else 0.02
+        xoffset = 0 #0.15 if x == 0 else 0.02
         xtext = min(conf_int) + xoffset if x < 0 else max(conf_int) - xoffset
         ytext = y + 0.2
 
@@ -238,7 +238,7 @@ for i, ax in enumerate(f.axes[0]):
 ax = f.axes[0][0]
 ax.set_xlim([-0.01, 0.01])
 ax.spines['right'].set_visible(False)
-ax.set_xlabel("Percentage Change in ALFF per Year (%)")
+ax.set_xlabel("Percentage change in ALFF per year (%)")
 
 # T2DM
 # ----
@@ -250,8 +250,8 @@ ax.set_xlabel("Difference in ALFF in T2DM+ vs T2DM- subjects (%)")
 # ------
 
 # Add common suptitle
-plt.suptitle("Changes in ALFF Associated with Age and T2DM: " \
-             "UK Biobank Dataset")
+plt.suptitle("Changes in ALFF sssociated with age and T2DM: " \
+             "UK Biobank dataset")
 
 ## Add common x label
 #plt.gcf().text(0.6, 0.03, "Change In Gray Matter Volume (%)", ha='center',

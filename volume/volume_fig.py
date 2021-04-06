@@ -197,7 +197,7 @@ ax.set_xlabel("Percentage change in gray matter volume\nacross age (% per year)"
 # T2DM
 # ----
 ax = f.axes[0][1]
-ax.set_xlim([-7.9, 4.3])
+ax.set_xlim([-7.9, 5.3])
 ax.set_xlabel("Percentage difference in gray matter volume\nT2DM+ vs. T2DM– (%)")
 
 # Figure formatting

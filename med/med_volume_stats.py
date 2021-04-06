@@ -44,7 +44,7 @@ excl_sub = [] # [1653701, 3361084, 3828231, 2010790, 2925838, 3846337,]  # Subje
 excl_region = ["Pallidum"]  # Regions to exclude
 RLD = False  # Reload regressor matrices instead of computing them again
 
-raise
+#raise
 
 # %%
 # =============================================================================

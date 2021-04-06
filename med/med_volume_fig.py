@@ -52,7 +52,7 @@ df = pd \
 # Colors
 colors = colors_from_values(
         np.array(list(-df["beta"]) + [df["beta"].min(), df["beta"].max()]),
-        "RdBu")[:-2]
+        "coolwarm_r")[:-2]
 
 colors_dict = {i: colors[i] for i in range(len(colors))}
 
@@ -112,7 +112,7 @@ for sp in ['bottom', 'top', 'right', 'left']:
 
 # Add labels
 ss = df["sample_sizes"]
-ax.set_xlabel(f"Percentage difference in gray matter volume\n{CTRS} (% of Avg)")
+ax.set_xlabel(f"Percentage difference in gray matter volume\n{CTRS} (% of avg)")
 
 plt.title("Gray matter volume as a function of metformin medication status:" \
           f"\nUK Biobank dataset ({CTRS}, age, sex and disease duration matched)\n" \
