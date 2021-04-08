@@ -58,8 +58,8 @@ from IPython import get_ipython
 
 get_ipython().run_line_magic('cd', '..')
 from helpers.plotting_style import plot_pars, plot_funcs
-get_ipython().run_line_magic('cd', 'neurofunction')
-get_ipython().run_line_magic('matplotlib', 'auto')
+get_ipython().run_line_magic('cd', 'similarity')
+get_ipython().run_line_magic('matplotlib', 'inline')
 
 # %%
 # =============================================================================
@@ -350,7 +350,7 @@ annot_text = [f"{rhos[i]:.2f}\n" + p2star(pvals[i]) for i in range(len(rhos))]
 annot_df = pd.DataFrame(np.array(annot_text).reshape(corr_matrix.shape))
 
 # Correlation plot
-plt.figure(figsize=(12, 10))
+plt.figure(figsize=(8.5, 5.5))
 plt.rcParams['xtick.labelsize']=16
 plt.rcParams['ytick.labelsize']=16
 plt.title(f"Parcellation: {PC}, {CORRMET}, {EXTRA}")

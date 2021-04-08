@@ -25,7 +25,7 @@ from IPython import get_ipython
 get_ipython().run_line_magic('cd', '..')
 from helpers.plotting_style import plot_pars, plot_funcs
 get_ipython().run_line_magic('cd', 'neurofunction')
-get_ipython().run_line_magic('matplotlib', 'auto')
+get_ipython().run_line_magic('matplotlib', 'inline')
 
 # Filepaths
 HOMEDIR = os.path.abspath(os.path.join(__file__, "../../../")) + "/"
@@ -126,14 +126,14 @@ fore_pos = image.math_img('img > 0', img=fore)
 fore_neg = image.math_img('img < 0', img=fore)
 
 # Display
-fig = plt.figure(figsize=(19.2, 8))
-plt.suptitle("Overlaid effects in ALFF with respect to age and T2DM: " \
-             "UK Biobank dataset")
+fig = plt.figure(figsize=(8.5, 2.2))
+#plt.suptitle("Overlaid effects in ALFF with respect to age and T2DM: " \
+#             "UK Biobank dataset")
 display = plotting.plot_roi(back, cmap=cmap, cut_coords=cut_coords,
                             vmin=-vm, vmax=vm, black_bg=True, figure=fig,
                             colorbar=True, draw_cross=False)
-display.add_contours(fore_pos, colors="red", alpha=1, linewidths=0.5)
-display.add_contours(fore_neg, colors="blue", alpha=1, linewidths=0.5)
+display.add_contours(fore_pos, colors="red", alpha=1, linewidths=0.5*lw)
+display.add_contours(fore_neg, colors="blue", alpha=1, linewidths=0.5*lw)
 
 plt.savefig(OUTDIR + f'figures/JAMA_meta_neurofunction_{MDL}_age-diab_overlap.pdf',
             transparent=True)
@@ -191,14 +191,14 @@ fore_pos = image.math_img('img > 0', img=fore)
 fore_neg = image.math_img('img < 0', img=fore)
 
 # Display
-fig = plt.figure(figsize=(19.2, 8))
-plt.suptitle("Overlaid effects in ALFF with respect to age and T2DM: " \
-             "Meta-analysis from Neuroquery")
+fig = plt.figure(figsize=(8.5, 2.2))
+#plt.suptitle("Overlaid effects in ALFF with respect to age and T2DM: " \
+#             "Meta-analysis from Neuroquery")
 display = plotting.plot_roi(back, cmap=cmap, cut_coords=cut_coords,
                             vmin=-vm, vmax=vm, black_bg=True, figure=fig,
                             colorbar=True, draw_cross=False)
-display.add_contours(fore_pos, colors="red", alpha=1, linewidths=1)
-display.add_contours(fore_neg, colors="blue", alpha=1, linewidths=1)
+display.add_contours(fore_pos, colors="red", alpha=1, linewidths=0.5*lw)
+display.add_contours(fore_neg, colors="blue", alpha=1, linewidths=0.5*lw)
 
 plt.savefig(HOMEDIR + "results/neuroquery/figures/JAMA_meta_neuroquery_age" \
             "-diab_overlap.pdf", transparent=True)

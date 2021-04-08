@@ -221,7 +221,7 @@ for name, type_ in var_dict.items():
             type1="disc",
             type2=type_,
             save=True,
-            prefix=OUTDIR + f"covariance/pub_meta_med_neurofunction_{CTRS}_covar_"
+            prefix=OUTDIR + f"covariance/pub_meta_med_neurofunction_{CTRS}_covar"
             )
 
     plt.close("all")
@@ -231,7 +231,7 @@ if RLD == False:
     regressors_matched = match(
             df=regressors_clean,
             main_var=CTRS,
-            vars_to_match=["age_group", "sex", "duration_group"],
+            vars_to_match=["age_group", "sex", "college", "duration_group"],
             N=1,
             random_state=1
             )

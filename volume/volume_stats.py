@@ -11,11 +11,6 @@ Notes:
 beginning!
 
 
-Todos:
--possibly add in prospensity score based matching instead of random sampling on
-top of the exact matching, for the remaining regressors
--possibly do ratio matching
-
 """
 
 import os
@@ -32,7 +27,7 @@ from tqdm import tqdm
 from IPython import get_ipython
 
 get_ipython().run_line_magic('cd', '..')
-from helpers.regression_helpers import check_covariance, match, check_assumptions
+from helpers.regression_helpers import check_covariance, match_mah, match_cont, check_assumptions
 get_ipython().run_line_magic('cd', 'volume')
 
 # =============================================================================
@@ -47,14 +42,14 @@ SRCDIR = HOMEDIR + "data/"
 OUTDIR = HOMEDIR + "results/volume/"
 
 # Inputs
-CTRS = "diab"  # Contrast: diab or age
+CTRS = "age"  # Contrast: diab or age
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
 PARC = 46  # Type of parcellation to use, options: 46 or 139
 excl_sub = [] # [1653701, 3361084, 3828231, 2010790, 2925838, 3846337,]  # Subjects
 ## to exlucde due to abnormal total gray matter volumes
 excl_region = ["Pallidum"]  # Regions to exclude
-RLD = True  # Reload regressor matrices instead of computing them again
+RLD = False  # Reload regressor matrices instead of computing them again
 
 #raise
 
@@ -194,10 +189,10 @@ if CTRS == "age":
 
     if RLD == False:
         # Match
-        regressors_matched = match(
+        regressors_matched = match_cont(
                 df=regressors_clean,
-                main_var="sex",
-                vars_to_match=["age"],
+                main_var="age",
+                vars_to_match=["sex", "college"],
                 N=1,
                 random_state=1
                 )
@@ -222,17 +217,17 @@ if CTRS == "diab":
                 type1="disc",
                 type2=type_,
                 save=True,
-                prefix=OUTDIR + "covariance/pub_meta_volume_covar_"
+                prefix=OUTDIR + "covariance/pub_meta_volume_covar"
                 )
 
         plt.close("all")
 
     if RLD == False:
         # Match
-        regressors_matched = match(
+        regressors_matched = match_mah(
                 df=regressors_clean,
                 main_var="diab",
-                vars_to_match=["age", "sex"],
+                vars_to_match=["age", "sex", "college"],
                 N=1,
                 random_state=1
                 )
@@ -248,6 +243,11 @@ if RLD == False:
 
 # Status
 print(f"Extracting volume values with contrast [{CTRS}] at parcellation [{PARC}]")
+
+# Load regressors
+regressors_matched = pd.read_csv(
+        OUTDIR + f"regressors/pub_meta_volume_matched_regressors_{CTRS}.csv"
+        )
 
 # 46 parcellation
 # -------
@@ -323,11 +323,6 @@ if PARC == 139:
 # Fit models
 # =============================================================================
 
-# Load regressors
-regressors_matched = pd.read_csv(
-        OUTDIR + f"regressors/pub_meta_volume_matched_regressors_{CTRS}.csv"
-        )
-
 # Status
 print(f"Fitting models for contrast [{CTRS}] at parcellation [{PARC}]")
 
@@ -375,10 +370,20 @@ for i, feat in tqdm(enumerate(features), total=len(features), desc="Models fitte
 
     # Plot across age
     if CTRS == "diab":
-        plt.figure()
+        gdf = sdf \
+            [[feat, "age", "diab"]] \
+            .pipe(lambda df: df.assign(**{"age_group":
+                    pd.cut(df["age"], bins=np.arange(0, 100, 5)).astype(str)
+                    })) \
+            .sort_values(by="age")
+
+        plt.figure(figsize=(10, 7))
         plt.title(feat)
-        sns.lineplot(data=sdf[[feat, "age", "diab"]], x="age", y=feat, hue="diab",
-                     palette=sns.color_palette(["black", "red"]))
+        sns.lineplot(data=gdf, x="age_group", y=feat, hue="diab",
+                     palette=sns.color_palette(["black", "red"]),
+                     ci=68, err_style="bars",
+                     marker="o", linewidth=2, markersize=6,
+                     err_kws={"capsize": 3, "capthick": 2, "elinewidth": 2})
         plt.tight_layout()
         plt.savefig(OUTDIR + f"stats_misc/pub_meta_volume_age-diab-plot_{feat}_{PARC}.pdf")
         plt.close()

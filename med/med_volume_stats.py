@@ -202,7 +202,7 @@ if RLD == False:
     regressors_matched = match(
             df=regressors_clean,
             main_var=CTRS,
-            vars_to_match=["age_group", "sex", "duration_group"],
+            vars_to_match=["age_group", "sex", "college", "duration_group"],
             N=1,
             random_state=1
             )

@@ -24,7 +24,7 @@ from tqdm import tqdm
 from IPython import get_ipython
 
 get_ipython().run_line_magic('cd', '..')
-from helpers.regression_helpers import check_covariance, match, check_assumptions
+from helpers.regression_helpers import check_covariance, match, match_cont, check_assumptions
 get_ipython().run_line_magic('cd', 'cognition')
 
 # =============================================================================
@@ -62,7 +62,7 @@ labels = {
      "6350-2.0": "Executive_Function",
      "20016-2.0": "Abstract_Reasoning",
      "20023-2.0": "Reaction_Time",
-     "23324-2.0": "Processing_Speed"
+     "23324-2.0": "Processing_Speed",
      }
 
 # Load data
@@ -153,7 +153,7 @@ for i, feat in enumerate(features):
     # Clean feature
     # -----
     # Extract data, drop non-positive records
-    data_feat = data.dropnaquery(f'`{feat}` > 0')[["eid", feat]]
+    data_feat = data.query(f'`{feat}` > 0')[["eid", feat]]
 
     # Constrain ivs to only those samples that have y values
     regressors_y = regressors \
@@ -185,7 +185,7 @@ for i, feat in enumerate(features):
                     type1=type_,
                     type2="cont",
                     save=True,
-                    prefix=OUTDIR + f"covariance/pub_meta_cognition_covar_{feat}_"
+                    prefix=OUTDIR + f"covariance/pub_meta_cognition_covar_{feat}"
                     )
 
             plt.close("all")
@@ -210,7 +210,7 @@ for i, feat in enumerate(features):
                     type1="disc",
                     type2=type_,
                     save=True,
-                    prefix=OUTDIR + f"covariance/pub_meta_cognition_covar_{feat}_"
+                    prefix=OUTDIR + f"covariance/pub_meta_cognition_covar_{feat}"
                     )
 
             plt.close("all")
@@ -220,10 +220,10 @@ for i, feat in enumerate(features):
     if (CTRS == "age") & (RLD == False):
 
         # Match
-        regressors_matched = match(
+        regressors_matched = match_cont(
                 df=regressors_clean,
-                main_var="sex",
-                vars_to_match=["age"],
+                main_var="age",
+                vars_to_match=["sex", "college"],
                 N=1,
                 random_state=1
                 )
@@ -234,7 +234,7 @@ for i, feat in enumerate(features):
         regressors_matched = match(
                 df=regressors_clean,
                 main_var="diab",
-                vars_to_match=["age", "sex"],
+                vars_to_match=["age", "sex", "college"],
                 N=1,
                 random_state=1
                 )
@@ -306,10 +306,20 @@ for i, feat in enumerate(features):
 
     # Plot across age
     if CTRS == "diab":
-        plt.figure()
+        gdf = sdf \
+            [[feat, "age", "diab"]] \
+            .pipe(lambda df: df.assign(**{"age_group":
+                    pd.cut(df["age"], bins=np.arange(0, 100, 5)).astype(str)
+                    })) \
+            .sort_values(by="age")
+
+        plt.figure(figsize=(10, 7))
         plt.title(feat)
-        sns.lineplot(data=sdf[[feat, "age", "diab"]], x="age", y=feat, hue="diab",
-                     palette=sns.color_palette(["black", "red"]))
+        sns.lineplot(data=gdf, x="age_group", y=feat, hue="diab",
+                     palette=sns.color_palette(["black", "red"]),
+                     ci=68, err_style="bars",
+                     marker="o", linewidth=2, markersize=6,
+                     err_kws={"capsize": 3, "capthick": 2, "elinewidth": 2})
         plt.tight_layout()
         plt.savefig(OUTDIR + f"stats_misc/pub_meta_cognition_age-diab-plot_{feat}.pdf")
         plt.close()

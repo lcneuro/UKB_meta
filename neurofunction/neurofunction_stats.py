@@ -36,7 +36,7 @@ from nistats.thresholding import map_threshold
 import nibabel as nib
 
 get_ipython().run_line_magic('cd', '..')
-from helpers.regression_helpers import check_covariance, match, check_assumptions
+from helpers.regression_helpers import check_covariance, match, match_cont, check_assumptions
 get_ipython().run_line_magic('cd', 'neurofunction')
 
 
@@ -52,7 +52,7 @@ SRCDIR = HOMEDIR + "data/"
 OUTDIR = HOMEDIR + "results/neurofunction/"
 
 # Inputs
-RLD = True  # Reload regressor matrices instead of computing them again
+RLD = False  # Reload regressor matrices instead of computing them again
 BATCH = 7  # Batch of preprocessed images to use
 
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
@@ -201,17 +201,17 @@ if CTRS == "age":
                 type1=type_,
                 type2="cont",
                 save=True,
-                prefix=OUTDIR + "covariance/pub_meta_neurofunction_covar_"
+                prefix=OUTDIR + "covariance/pub_meta_neurofunction_covar"
                 )
 
         plt.close("all")
 
     if RLD == False:
         # Match
-        regressors_matched = match(
+        regressors_matched = match_cont(
                 df=regressors_clean,
-                main_var="sex",
-                vars_to_match=["age"],
+                main_var="age",
+                vars_to_match=["sex", "college"],
                 N=1,
                 random_state=1
                 )
@@ -236,7 +236,7 @@ if CTRS == "diab":
                 type1="disc",
                 type2=type_,
                 save=True,
-                prefix=OUTDIR + "covariance/pub_meta_neurofunction_covar_"
+                prefix=OUTDIR + "covariance/pub_meta_neurofunction_covar"
                 )
 
         plt.close("all")
@@ -246,7 +246,7 @@ if CTRS == "diab":
         regressors_matched = match(
                 df=regressors_clean,
                 main_var="diab",
-                vars_to_match=["age", "sex"],
+                vars_to_match=["age", "sex", "college"],
                 N=1,
                 random_state=1
                 )

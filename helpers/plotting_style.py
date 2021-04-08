@@ -15,35 +15,35 @@ plt.style.use("default")
 #plt.style.use("ggplot")
 #sns.set_style("whitegrid")
 
-fs=1.3  # Fontsize
-lw=2  # Linewidth
+fs=1.0  # Fontsize
+lw=2   # Linewidth
 
 plot_pars = [fs, lw]
 
 # Stylesheet
 plt.rcParams['xtick.color'] = "black"
 plt.rcParams['ytick.color'] = "black"
-plt.rcParams['xtick.major.size'] = 10
-plt.rcParams['xtick.major.width'] = 2
-plt.rcParams['ytick.major.size'] = 10
-plt.rcParams['ytick.major.width'] = 2
-plt.rcParams['xtick.labelsize']=12*fs
-plt.rcParams['ytick.labelsize']=12*fs
+plt.rcParams['xtick.major.size'] = 6
+plt.rcParams['xtick.major.width'] = 0.5*lw
+plt.rcParams['ytick.major.size'] = 6
+plt.rcParams['ytick.major.width'] = 0.5*lw
+plt.rcParams['xtick.labelsize']=6*fs
+plt.rcParams['ytick.labelsize']=6*fs
 plt.rcParams['text.color'] = "black"
 plt.rcParams['axes.labelcolor'] = "black"
 plt.rcParams["font.weight"] = "bold"
 plt.rcParams["font.family"] = "DejaVu Sans"
-plt.rcParams["font.size"] = 12*fs
-plt.rcParams['axes.labelsize']=14*fs
+plt.rcParams["font.size"] = 7*fs
+plt.rcParams['axes.labelsize']=8*fs
 plt.rcParams['axes.labelweight'] = "bold"
 plt.rcParams['lines.linewidth'] = 3
 plt.rcParams['lines.markersize'] = 3
-plt.rcParams['legend.fontsize'] = 14*fs
-plt.rcParams['legend.title_fontsize'] = 14*fs
+plt.rcParams['legend.fontsize'] = 9*fs
+plt.rcParams['legend.title_fontsize'] = 9*fs
 plt.rcParams['text.latex.preamble'] = r'\boldmath'
-plt.rcParams['figure.titlesize'] = 18*fs
+plt.rcParams['figure.titlesize'] = 10*fs
 plt.rcParams['figure.titleweight'] = "bold"
-plt.rcParams['axes.titlesize'] = 15*fs
+plt.rcParams['axes.titlesize'] = 9*fs
 plt.rcParams['axes.titleweight'] = "bold"
 #plt.rcParams['axes.axisbelow'] = True
 

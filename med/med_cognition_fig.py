@@ -31,19 +31,22 @@ OUTDIR = HOMEDIR + "results/med/cognition/"
 
 # Inputs
 CTRS = "metfonly_unmed"
+CTRS_label = "Metformin only (T2DM+) vs unmedicated (T2DM+)"
 
 # Case specific values
 cases = [CTRS]
 titles = [
-        "Cognitive performance as a function of metformin medication status:" \
-          f"\nUK Biobank dataset ({CTRS}, age, sex and disease duration matched)\n"
+        "Cognitive performance as a function of\nmetformin medication status:" \
+          f"\nUK Biobank dataset\n({CTRS_label},\nage, sex and disease duration matched)\n"
         ]
 ylabeltexts = [
-        f"Percentage difference in task performance\n{cases[0]} (% of Avg)",
+        f"Percentage difference in task performance\n{CTRS_label} (% of avg)",
         ]
 colors = ["coolwarm"]
-ylims = [[-18, 10]]
+ylims = [[-30, 10]]
 sfs = [1e2]  # Marker size factors
+sfscf = [500]  # Marker size scale factors
+sdxo = [0.92]  # x axis offset of scale info
 textpads = [0.1]  # Padding for text along y axis
 xtickrots = [0]  # Rotation of xticks
 xtickvas = ["top"]  # Vertical alignment for xticks
@@ -96,7 +99,7 @@ for case in cases:
 # Figure
 # =============================================================================
 
-f = plt.figure(figsize=(19.2, 7))
+f = plt.figure(figsize=(4.25, 5.5))
 plt.suptitle("")
 
 # Panels A & B
@@ -140,11 +143,11 @@ for c, case in enumerate(cases):
                     #"mediumblue")
 
         # Small dot to represent center
-        plt.scatter(x=x, y=y, s=50, color="k")
+        plt.scatter(x=x, y=y, s=12*lw, color="k")
 
         # Errorbars
-        plt.errorbar(x, y, yerr=conf_dist, capsize=12, capthick=lw,
-                     elinewidth=lw, color="black")
+        plt.errorbar(x, y, yerr=conf_dist, capsize=2.5*lw, capthick=0.5*lw,
+                     elinewidth=0.5*lw, color="black")
 
     #    # Annotate stats as text
     #    text = f"T={t:.1f} \n {pformat(p)}" + p2star(p) \
@@ -182,7 +185,7 @@ for c, case in enumerate(cases):
             mtc.FuncFormatter(lambda x, p: format(f"{x:.1f}")))
 
     # Ticks/lines
-    plt.axhline(0, linewidth=lw, color="black", dashes=[4, 4])
+    plt.axhline(0, linewidth=lw*0.5, color="black", dashes=[4, 4])
     plt.xticks(ticks=np.arange(len(df)), labels=df["label"],
                rotation=xtickrots[c], va=xtickvas[c])
     plt.gca().tick_params(axis="x", pad=xtickpads[c])
@@ -190,12 +193,19 @@ for c, case in enumerate(cases):
     plt.gca().yaxis.tick_left()
 
     for sp in ['bottom', 'top', 'left', 'right']:
-        plt.gca().spines[sp].set_linewidth(lw)
+        plt.gca().spines[sp].set_linewidth(0.5*lw)
         plt.gca().spines[sp].set_color("black")
 
     plt.gca().xaxis.grid(False)
     plt.gca().yaxis.grid(True)
     plt.gca().set_axisbelow(True)
+
+    # Add scale
+    plt.scatter(x=len(df)-sdxo[c], y=ylims[c][0] * 0.94, s=sfscf[c]**2/sfs[c],
+                color="gray")
+
+    plt.annotate(text=f"Scale:\nN={sfscf[c]}",
+                 xy=[len(df)-sdxo[c], ylims[c][0] * 0.94], va="center", ha="center")
 
 ## Caption info, !: not quite correct, cases with scores are more complex than
 ## just > 0. FOr some it's >=0, and others it's >0

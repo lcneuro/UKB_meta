@@ -23,7 +23,7 @@ from IPython import get_ipython
 get_ipython().run_line_magic('cd', '..')
 from helpers.regression_helpers import check_covariance, match_multi, check_assumptions
 from helpers.plotting_style import plot_pars, plot_funcs
-get_ipython().run_line_magic('cd', 'volume')
+get_ipython().run_line_magic('cd', 'neurofunction')
 
 # =============================================================================
 # Setup
@@ -32,7 +32,7 @@ get_ipython().run_line_magic('cd', 'volume')
 # Filepaths
 HOMEDIR = os.path.abspath(os.path.join(__file__, "../../../")) + "/"
 SRCDIR = HOMEDIR + "data/"
-OUTDIR = HOMEDIR + "results/volume/"
+OUTDIR = HOMEDIR + "results/neurofunction/"
 
 # Inputs
 CTRS = "duration"  # Contrast: diab or age
@@ -40,8 +40,6 @@ T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
 DUR_CO = 10  # Year to separate subjects along duration <x, >=x
 PARC = 46  # Type of parcellation to use, options: 46 or 139
-excl_sub = [] # [1653701, 3361084, 3828231, 2010790, 2925838, 3846337,]  # Subjects
-## to exlucde due to abnormal total gray matter volumes
 excl_region = ["Pallidum"]  # Regions to exclude
 RLD = False # Reload regressor matrices instead of computing them again
 
@@ -55,23 +53,7 @@ RLD = False # Reload regressor matrices instead of computing them again
 # Load volume data
 # -------
 # Load atrophy data
-data = pd.read_csv(SRCDIR + "volume/volume_data.csv").drop(["age", "gender"], axis=1)
-
-# Load labels
-labels = pd \
-    .read_csv(SRCDIR + "volume/volume_labels.csv",
-                     index_col=0, header=0, names=["ID", "label"]) \
-    .set_index("ID").to_dict()["label"]
-
-# Load head size normalization factor
-head_norm = pd.read_csv(SRCDIR + "volume/head_size_norm_fact.csv")
-head_norm = data.merge(head_norm, on="eid", how="inner")[["eid", "norm_fact"]]
-
-# Rename columns
-data = data.rename(labels, axis=1).set_index("eid")
-
-# Exclude subjects
-data = data.query(f'eid not in {excl_sub}')
+data = pd.read_csv(SRCDIR + "neurofunction/avg_alff.csv", index_col=0)
 
 # Load regressors
 # ------
@@ -150,14 +132,15 @@ regressors = functools.reduce(
             ))
 
 # Inner merge regressors with a gm column to make sure all included subjects have data
-y = data['Volume of grey matter (normalised for head size)'].rename("feat").reset_index()
+y = data[["eid", 'alff_mean']].rename({"alff_mean": "feat"}, axis=1).reset_index()
 regressors_y = y.merge(regressors, on="eid", how="inner")
 
 # Drop feat column
 regressors_clean = regressors_y.drop(["feat"], axis=1)
 
 # Save full regressor matrix
-regressors_clean.to_csv(OUTDIR + f"regressors/pub_meta_volume_full_regressors_{CTRS}.csv")
+regressors_clean.to_csv(OUTDIR + f"regressors/pub_meta_neurofunction_acceleration_" \
+                        f"full_regressors_{CTRS}.csv")
 
 # Interactions among independent variables
 var_dict = {
@@ -177,7 +160,7 @@ for name, type_ in var_dict.items():
             type1="cont",
             type2=type_,
             save=True,
-            prefix=OUTDIR + "covariance/pub_meta_volume_covar"
+            prefix=OUTDIR + "covariance/pub_meta_neurofunction_acceleration_covar"
             )
 
     plt.close("all")
@@ -196,7 +179,8 @@ if RLD == False:
     # Save matched regressors matrix
     regressors_matched \
         .reset_index(drop=True) \
-        .to_csv(OUTDIR + f"regressors/pub_meta_volume_matched_regressors_{CTRS}.csv")
+        .to_csv(OUTDIR + f"regressors/pub_meta_neurofunction_acceleration_" \
+                f"matched_regressors_{CTRS}.csv")
 
 # %%
 # =============================================================================
@@ -207,11 +191,11 @@ if RLD == False:
 # ------
 # Get regressors
 regressors_matched = pd.read_csv(
-        OUTDIR + f"regressors/pub_meta_volume_matched_regressors_{CTRS}.csv",
+        OUTDIR + f"regressors/pub_meta_neurofunction_acceleration_matched_regressors_{CTRS}.csv",
         index_col=0)
 
 # Join regressors with data
-y = data['Volume of grey matter (normalised for head size)'].rename("Whole_Brain").reset_index()
+y = data.rename({"alff_mean": "Whole_Brain"}, axis=1).reset_index()
 df = regressors_matched.merge(y, on="eid", how="inner")
 
 # Take nondiabetic subs
@@ -230,7 +214,7 @@ results = model.fit()
 # --------
 
 # Save detailed stats report
-with open(OUTDIR + f"stats_misc/pub_meta_volume_regression_table_{feat}" \
+with open(OUTDIR + f"stats_misc/pub_meta_neurofunction_acceleration_regression_table_{feat}" \
           f"_{CTRS}.html", "w") as f:
     f.write(results.summary().as_html())
 
@@ -239,7 +223,7 @@ check_assumptions(
         results,
         sdf,
         prefix=OUTDIR + \
-        f"stats_misc/pub_meta_volume_stats_assumptions_{feat}_{CTRS}"
+        f"stats_misc/pub_meta_neurofunction_acceleration_stats_assumptions_{feat}_{CTRS}"
         )
 
 # %%
@@ -302,21 +286,17 @@ plt.annotate(text, xycoords="axes fraction", xy=[0.279, 0.03],
 # ----
 
 # Title
-plt.title("Gray matter atrophy across age and\nT2DM disease progression:\n" \
+plt.title("Mean ALFF across age and\nT2DM disease progression:\n" \
           f"UK Biobank dataset\n" \
           f"(N$_{{≥10 years}}$={int(gdf.shape[0]/3)}, " \
           f"N$_{{0-9 years}}$={int(gdf.shape[0]/3)}, " \
           f"N$_{{HC}}$={int(gdf.shape[0]/3)}, "
-          "\nage and sex-matched)")
+          "\nage, education and sex-matched)")
 
 plt.xlabel("Age group (year)")
-#plt.ylabel("Gray matter volume delineated\nbrain age (y)")
+#plt.ylabel("Gray matter neurofunction delineated\nbrain age (y)")
 
-plt.ylabel("Gray matter volume (voxel count)")
-plt.gca().yaxis.set_major_formatter(mtc.FuncFormatter
-       (lambda x, pos: f"{x/1e5:.1f}"))
-plt.annotate("×10$^5$", xy=[0, 1.03], xycoords="axes fraction",
-             fontsize=8*fs, va="center")
+plt.ylabel("Mean ALFF")
 
 legend_handles, _ = plt.gca().get_legend_handles_labels()
 [ha.set_linewidth(5) for ha in legend_handles]
@@ -340,6 +320,6 @@ plt.tight_layout()
 # ----
 
 plt.tight_layout(rect=[0, 0.05, 1, 0.98])
-plt.savefig(OUTDIR + "figures/JAMA_meta_figure_volume_acceleration.pdf",
+plt.savefig(OUTDIR + "figures/JAMA_meta_figure_neurofunction_acceleration.pdf",
             transparent=True)
 plt.close("all")

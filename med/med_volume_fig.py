@@ -27,6 +27,8 @@ OUTDIR = HOMEDIR + "results/med/volume/"
 
 # Inputs
 CTRS = "metfonly_unmed"  # Contrast: diab or age
+CTRS_label = "Metformin only (T2DM+) vs unmedicated (T2DM+)"
+
 PARC = 46  # Type of parcellation to use, options: 46 or 139
 
 # Unpack plotting utils
@@ -57,12 +59,12 @@ colors = colors_from_values(
 colors_dict = {i: colors[i] for i in range(len(colors))}
 
 # Make figure
-plt.figure(figsize=(19.2, 22))
+plt.figure(figsize=(4.25, 5.5))
 
 # Plot
 sns.barplot(data=df, y="label", x="beta",
             palette=colors_dict, hue="index", dodge=False,
-            linewidth=lw, edgecolor="black",
+            linewidth=lw*0.25, edgecolor="black",
             zorder=3, orient="h")
 
 # Turn legend off
@@ -72,10 +74,10 @@ plt.legend([],[], frameon=False)
 ax = plt.gca()
 
 # Add grid
-ax.grid(zorder=0)
+ax.grid(zorder=0, linewidth=0.25*lw)
 
 # Add x=0 axvline
-ax.axvline(x=0, linewidth=3, color="black")
+ax.axvline(x=0, linewidth=0.5*lw, color="black")
 
 # Add in errobars
 for _, item in tqdm(enumerate(df.iterrows()), total=len(df)):
@@ -85,8 +87,8 @@ for _, item in tqdm(enumerate(df.iterrows()), total=len(df)):
 
     conf_dist = abs(x - np.array(conf_int))[:, None]
 
-    ax.errorbar(x, y, xerr=conf_dist, capsize=3, capthick=lw,
-                 elinewidth=lw, color="black", zorder=100)
+    ax.errorbar(x, y, xerr=conf_dist, capsize=1*lw, capthick=lw*0.25,
+                 elinewidth=lw*0.25, color="black", zorder=100)
 
 #    text = pformat(p) + p2star(p ) if PRINT_P \
 #            else p2star(p)
@@ -102,20 +104,20 @@ for _, item in tqdm(enumerate(df.iterrows()), total=len(df)):
     ytext = y + 0.2
 
     ax.annotate("   " + text + "   ", xy=[xtext, ytext],
-                 ha=ha, va="center", fontsize=12*fs, fontweight="bold")
+                 ha=ha, va="center", fontsize=8*fs, fontweight="bold")
 
 
 # Add spines
 for sp in ['bottom', 'top', 'right', 'left']:
-    ax.spines[sp].set_linewidth(2)
+    ax.spines[sp].set_linewidth(0.5*lw)
     ax.spines[sp].set_color("black")
 
 # Add labels
 ss = df["sample_sizes"]
-ax.set_xlabel(f"Percentage difference in gray matter volume\n{CTRS} (% of avg)")
+ax.set_xlabel(f"Percentage difference in gray matter volume\n{CTRS_label}\n(% of avg)")
 
-plt.title("Gray matter volume as a function of metformin medication status:" \
-          f"\nUK Biobank dataset ({CTRS}, age, sex and disease duration matched)\n" \
+plt.title("Gray matter volume as a function of\nmetformin medication status:" \
+          f"\nUK Biobank dataset\n({CTRS_label},\nage, sex and disease duration matched)\n" \
           + f"(N$_{{metf+}}$={ss[0][1]:,}, N$_{{metf-}}$={ss[0][0]:,})")
 ax.set_ylabel("")
 

@@ -114,11 +114,11 @@ colors_dict = {i: colors[i] for i in range(len(colors))}
 df["label"] = df["label"].str.replace("_", " ")
 
 # Plotting
-f = sns.FacetGrid(data=df, col="contrast", height=16, aspect=0.6,
+f = sns.FacetGrid(data=df, col="contrast", height=5.5, aspect=0.77,
                   sharex=False, despine=False) \
     .map_dataframe(sns.barplot, y="label", x="beta",
                    palette=colors_dict, hue="index", dodge=False,
-                   linewidth=lw, edgecolor="black",
+                   linewidth=lw*0.25, edgecolor="black",
                    zorder=3, orient="h")
 
 # Formatting
@@ -130,8 +130,8 @@ f = sns.FacetGrid(data=df, col="contrast", height=16, aspect=0.6,
 # Axis titles
 ss = [t2["sample_sizes"][0], ag["sample_sizes"][0]]
 title_texts = [
-        f"Age (T2DM– only, sex-matched)\nN$_{{}}$={ss[1][0]:,}",
-        f"T2DM (T2DM+ vs. T2DM–, age and sex-Matched)\nN$_{{T2DM+}}$={ss[0][1]:,}, " \
+        f"Age (T2DM– only, education and sex-matched)\nN$_{{}}$={ss[1][0]:,}",
+        f"T2DM (T2DM+ vs. T2DM–, age, education\nand sex-matched)\nN$_{{T2DM+}}$={ss[0][1]:,}, " \
         f"N$_{{T2DM–}}$={ss[0][0]:,}"
         ]
 
@@ -146,10 +146,10 @@ for i, ax in enumerate(f.axes[0]):
     ax.set_title(title_texts[i])
 
     # Add grid
-    ax.grid(zorder=0)
+    ax.grid(zorder=0, linewidth=0.25*lw)
 
     # Add x=0 axvline
-    ax.axvline(x=0, linewidth=3, color="black")
+    ax.axvline(x=0, linewidth=0.5*lw, color="black")
 
     # Add in errobars
     for _, item in tqdm(enumerate(sub_df.iterrows()), total=len(sub_df)):
@@ -159,8 +159,8 @@ for i, ax in enumerate(f.axes[0]):
 
         conf_dist = abs(x - np.array(conf_int))[:, None]
 
-        ax.errorbar(x, y, xerr=conf_dist, capsize=3, capthick=lw,
-                     elinewidth=lw, color="black", zorder=100)
+        ax.errorbar(x, y, xerr=conf_dist, capsize=1*lw, capthick=lw*0.25,
+                     elinewidth=lw*0.25, color="black", zorder=100)
 
     #    text = pformat(p) + p2star(p ) if PRINT_P \
     #            else p2star(p)
@@ -176,11 +176,11 @@ for i, ax in enumerate(f.axes[0]):
         ytext = y + 0.2
 
         ax.annotate("   " + text + "   ", xy=[xtext, ytext],
-                     ha=ha, va="center", fontsize=12*fs, fontweight="bold")
+                     ha=ha, va="center", fontsize=8*fs, fontweight="bold")
 
     # Add spines
     for sp in ['bottom', 'top', 'right', 'left']:
-        ax.spines[sp].set_linewidth(2)
+        ax.spines[sp].set_linewidth(0.5*lw)
         ax.spines[sp].set_color("black")
 
 

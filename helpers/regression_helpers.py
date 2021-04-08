@@ -230,8 +230,141 @@ def check_assumptions(results, sdf, prefix):
     #scdensplot(sdf["age"], sdf["feat"])
     #scdensplot(sdf["age"], results.fittedvalues)
 
-
 def match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
+    """
+    Function to perform matching across chosen independent variables.
+    Simple matching with no grouping involved.
+    """
+
+    # Separate items per main variable
+    exp_subs = df.query(f"{main_var} == 1")
+    ctrl_subs = df.query(f"{main_var} == 0")
+
+    # List of matched items, later to serve as a df
+    mdf_list = []
+
+    # List to store number of available subject
+    candidate_numbers_list = []
+
+    # Iterate over all subjects positive to the treatment
+    for i, exp_sub in tqdm(enumerate(exp_subs.iterrows()), total=exp_subs.shape[0]):
+
+        # Find control subjects that match along variables
+        query_statement = " & ".join([f'{var} == {exp_sub[1][var]}' \
+                                      for var in vars_to_match])
+        candidates = ctrl_subs.query(query_statement)
+
+        # Store numbers
+        candidate_numbers_list.append(len(candidates))
+
+        # If there is at least 1 match
+        if candidates.shape[0] >= N:
+
+            # Pick from candidates randomly
+            picked_ctrl_subs = candidates.sample(n=N, random_state=random_state)
+
+            # If found: Take out subject from ctrl_subs hat
+            ctrl_subs = ctrl_subs \
+                .merge(
+                    picked_ctrl_subs,
+                    on=ctrl_subs.columns.to_list(),
+                    how="left",
+                    indicator=True
+                    ) \
+                .query('_merge != "both"').drop("_merge", axis=1)
+
+            # If found: add both subjects to mdf
+            mdf_list.append(exp_sub[1].to_frame().T)
+            mdf_list.append(picked_ctrl_subs)
+
+        else:
+            pass
+#            print(f'\nNo match found for: {int(exp_sub[1]["eid"])}')
+
+    # Concat into df
+    mdf = pd.concat(mdf_list, axis=0)
+
+     # Analyze candidate availability
+    candidate_numbers = pd.DataFrame(candidate_numbers_list, columns=["count"])
+    print(f"Matching info:\nmatched subjects: N={mdf.shape[0]}\n", \
+            "candidates:\n", candidate_numbers.describe())
+
+    return mdf
+
+def match_cont(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
+    """
+    Matches covariates across a continuous main variable. Covariates to match
+    must be binary!
+
+    """
+
+    # Entires that are matched will be removed from this df to avoid replacement
+    remaining_entries = df.copy()
+
+    # List of matched items, later to serve as a df
+    mdf_list = []
+
+    # List to store number of available subject
+    candidate_numbers_list = []
+
+    for i, entry in tqdm(enumerate(
+                    df.sample(frac=1, random_state=random_state).iterrows()),
+                    total=df.shape[0],
+                    desc="Matching subject: "):
+
+        # Make sure entry has not been picked yet
+        if entry[1]["eid"].astype(int) not in remaining_entries["eid"].to_list():
+            continue
+
+        # Find candidate subjects that match along variables
+        query_statement = \
+            " & ".join([f'{var} != {entry[1][var]}' for var in vars_to_match] + \
+                        [f'{main_var} == {entry[1][main_var]}'])
+
+        candidates = remaining_entries.query(query_statement)
+
+        # Store numbers
+        candidate_numbers_list.append(len(candidates))
+
+        # If there is at least 1 match
+        if candidates.shape[0] >= N:
+
+            # Pick from candidates randomly
+            picked_ctrl_subs = candidates.sample(n=N, random_state=random_state)
+
+            # Merge original entry and picked entries
+            entries_merged = pd.concat((picked_ctrl_subs, entry[1].to_frame().T))
+
+            # If found: Take out subject from ctrl_subs hat
+            remaining_entries = remaining_entries \
+                .merge(
+                    entries_merged,
+                    on=remaining_entries.columns.to_list(),
+                    how="left",
+                    indicator=True
+                    ) \
+                .query('_merge != "both"').drop("_merge", axis=1)
+
+            # If found: add both subjects to mdf
+            mdf_list.append(entries_merged)
+
+        else:
+            pass
+#            print(f'\nNo match found for: {int(entry[1]["eid"])}')
+
+    # Concat into df
+    mdf = pd.concat(mdf_list, axis=0)
+
+     # Analyze candidate availability
+    candidate_numbers = pd.DataFrame(candidate_numbers_list, columns=["count"])
+    print(f"Matching info:\nmatched subjects: N={mdf.shape[0]}\n", \
+            "candidates:\n", candidate_numbers.describe())
+
+    return mdf
+
+
+
+def match_mah(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
     """
     Function to perform matching across chosen independent variables.
     Method: exact matching across specified covariates, remaining covariates
@@ -282,7 +415,8 @@ def match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
 
             # Pick top N closest matches
             picked_ctrl_subs = candidates \
-                .assign(**{"dist": dists[0]}).sort_values(by="dist").iloc[:N, :] \
+                .assign(**{"dist": dists[0]}).sort_values(by="dist") \
+                .iloc[:N, :] \
                 .drop("dist", axis=1)
 
     #        # Pick from candidates randomly
@@ -319,7 +453,7 @@ def match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
     return mdf
 
 # Multi-matching function
-def multi_match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
+def match_multi(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
     """
     Function to perform matching across chosen independent variables.
     Method: exact matching across specified covariates. No distance matching

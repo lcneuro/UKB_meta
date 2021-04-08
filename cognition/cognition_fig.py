@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import itertools
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mtc
+import matplotlib.ticker as mtc0.5*lwcaps
 import seaborn as sns
 from IPython import get_ipython
 
@@ -39,11 +39,14 @@ OUTDIR = HOMEDIR + "results/cognition/"
 cases = ["age", "diab", "meta"]
 titles = [
         "Cognitive deficits associated with age:\n" \
-            "UK Biobank dataset (T2DM- only, sex-matched)",
+            "UK Biobank dataset (T2DM- only, education " \
+            "and sex-matched)",
         "Cognitive deficits associated with T2DM:\n" \
-            "UK Biobank dataset (T2DM+ vs. T2DM-, age and sex-matched)",
+            "UK Biobank dataset (T2DM+ vs. T2DM-, age, education " \
+            "and sex-matched)",
         "Cognitive deficits associated with T2DM:\n" \
-            "meta-analysis of published literature (T2DM+ vs. T2DM–, age and sex-matched)",
+            "meta-analysis of published literature (T2DM+ vs. T2DM–, age, education " \
+            "and sex-matched)",
         ]
 ylabeltexts = [
         "Percentage change in task performance\nacross age (% per year)",
@@ -51,8 +54,10 @@ ylabeltexts = [
         "Standardized mean difference\nT2DM+ vs. T2DM- (Cohen's d)"
         ]
 colors = ["Purples", "Blues", "bone_r"]
-ylims = [[-2.5, 0.3], [-15.5, 2.5], [-0.75, 0.2]]
-sfs = [4e4, 1e3, 0.2]  # Marker size factors
+ylims = [[-2.5, 0.3], [-17.0, 2.5], [-0.75, 0.2]]
+sfs = [4e4, 1e3, 0.3]  # Marker size factors
+sfscf = [15000, 2000, 25]  # Marker size scale factors
+sdxo = [0.76, 0.75, 0.9]  # x axis offset of scale info
 textpads = [0.1, 0.2, 0.02]  # Padding for text along y axis
 xtickrots = [0, 0, 0]  # Rotation of xticks
 xtickvas = ["top", "top", "top"]  # Vertical alignment for xticks
@@ -125,7 +130,7 @@ fs, lw = plot_pars
 p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
 
 # Figure
-f = plt.figure(figsize=(19.2, 22))
+f = plt.figure(figsize=(8.1, 11))
 plt.suptitle("Cognitive deficits associated with age and T2DM\n")
 
 # Panels A & B
@@ -152,7 +157,7 @@ for c, case in enumerate(cases):
 
         # Colors
         colors_all = colors_from_values(
-            np.array(list(-df["beta"]) + [df["beta"].min() + 4, df["beta"].max()]),
+            np.array(list(-df["beta"]) + [df["beta"].min() + 2, df["beta"].max()]),
             colors[c])
 
         for i, item in enumerate(df.iterrows()):
@@ -169,10 +174,10 @@ for c, case in enumerate(cases):
                         #"mediumblue")
 
             # Plot center of estimate
-            plt.scatter(x=x, y=y, s=50, color="k")
+            plt.scatter(x=x, y=y, s=25*lw, color="k")
 
             # Errorbars
-            plt.errorbar(x, y, yerr=conf_dist, capsize=12, capthick=lw,
+            plt.errorbar(x, y, yerr=conf_dist, capsize=5*lw, capthick=lw,
                          elinewidth=lw, color="black")
 
         #    # Annotate stats as text
@@ -215,10 +220,10 @@ for c, case in enumerate(cases):
             plt.scatter(x=x, y=y, s=K**2/sfs[c], color=colors_all[i])
 
             # Plot center of estimate
-            plt.scatter(x=x, y=y, s=50, color="k")
+            plt.scatter(x=x, y=y, s=25*lw, color="k")
 
             # Errorbars
-            plt.errorbar(x, y, yerr=conf_dist, capsize=18, capthick=lw,
+            plt.errorbar(x, y, yerr=conf_dist, capsize=5*lw, capthick=lw,
                          elinewidth=lw, color="black")
 
         #    # Annotate stats as text
@@ -244,7 +249,7 @@ for c, case in enumerate(cases):
             text_y =  min(conf_int) - textpads[c] \
                     if y < 0 else max(conf_int) + textpads[c]
             va = "top" if y < 0 else "bottom"
-            plt.annotate(text, xy=[text_x, text_y], fontsize=12*fs,
+            plt.annotate(text, xy=[text_x, text_y], fontsize=8*fs,
                          ha="center", va=va, fontweight="bold",
                          rotation=0)
 
@@ -265,7 +270,7 @@ for c, case in enumerate(cases):
             mtc.FuncFormatter(lambda x, p: format(f"{x:.1f}")))
 
     # Ticks/lines
-    plt.axhline(0, linewidth=lw, color="black", dashes=[4, 4])
+    plt.axhline(0, linewidth=0.5*lw, color="black", dashes=[4, 4])
     plt.xticks(ticks=np.arange(len(df)), labels=df["label"],
                rotation=xtickrots[c], va=xtickvas[c])
     plt.gca().tick_params(axis="x", pad=xtickpads[c])
@@ -273,12 +278,19 @@ for c, case in enumerate(cases):
     plt.gca().yaxis.tick_left()
 
     for sp in ['bottom', 'top', 'left', 'right']:
-        plt.gca().spines[sp].set_linewidth(lw)
+        plt.gca().spines[sp].set_linewidth(0.5*lw)
         plt.gca().spines[sp].set_color("black")
 
     plt.gca().xaxis.grid(False)
     plt.gca().yaxis.grid(True)
     plt.gca().set_axisbelow(True)
+
+    # Add scale
+    plt.scatter(x=len(df)-sdxo[c], y=ylims[c][0] * 0.88, s=sfscf[c]**2/sfs[c],
+                color="gray")
+
+    plt.annotate(text=f"Scale:\nN={sfscf[c]}",
+                 xy=[len(df)-sdxo[c], ylims[c][0] * 0.88], va="center", ha="center")
 
 ## Caption info, !: not quite correct, cases with scores are more complex than
 ## just > 0. FOr some it's >=0, and others it's >0
