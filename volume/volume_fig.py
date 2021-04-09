@@ -130,9 +130,9 @@ f = sns.FacetGrid(data=df, col="contrast", height=5.5, aspect=0.77,
 # Axis titles
 ss = [t2["sample_sizes"][0], ag["sample_sizes"][0]]
 title_texts = [
-        f"Age (T2DM– only, education and sex-matched)\nN$_{{}}$={ss[1][0]:,}",
-        f"T2DM (T2DM+ vs. T2DM–, age, education\nand sex-matched)\nN$_{{T2DM+}}$={ss[0][1]:,}, " \
-        f"N$_{{T2DM–}}$={ss[0][0]:,}"
+        f"Age (HC only, education and sex-matched)\nN$_{{}}$={ss[1][0]:,}",
+        f"T2DM (T2DM+ vs. HC,\nage, education and sex-matched)\nN$_{{T2DM+}}$={ss[0][1]:,}, " \
+        f"N$_{{HC}}$={ss[0][0]:,}"
         ]
 
 
@@ -159,7 +159,7 @@ for i, ax in enumerate(f.axes[0]):
 
         conf_dist = abs(x - np.array(conf_int))[:, None]
 
-        ax.errorbar(x, y, xerr=conf_dist, capsize=1*lw, capthick=lw*0.25,
+        ax.errorbar(x, y, xerr=conf_dist, capsize=0.7*lw, capthick=lw*0.25,
                      elinewidth=lw*0.25, color="black", zorder=100)
 
     #    text = pformat(p) + p2star(p ) if PRINT_P \
@@ -173,10 +173,17 @@ for i, ax in enumerate(f.axes[0]):
 
         xoffset = 0.15 if x == 0 else 0.02
         xtext = min(conf_int) + xoffset if x < 0 else max(conf_int) - xoffset
-        ytext = y + 0.2
+        ytext = y + 0.3
 
         ax.annotate("   " + text + "   ", xy=[xtext, ytext],
                      ha=ha, va="center", fontsize=8*fs, fontweight="bold")
+
+    # Format bars
+    for bar in ax.patches:
+        w=0.7
+        y = bar.get_y()
+        bar.set_y(y + (0.8 - w)/2)
+        bar.set_height(w)
 
     # Add spines
     for sp in ['bottom', 'top', 'right', 'left']:
@@ -197,22 +204,22 @@ ax.set_xlabel("Percentage change in gray matter volume\nacross age (% per year)"
 # T2DM
 # ----
 ax = f.axes[0][1]
-ax.set_xlim([-7.9, 5.3])
-ax.set_xlabel("Percentage difference in gray matter volume\nT2DM+ vs. T2DM– (%)")
+ax.set_xlim([-8.1, 5.3])
+ax.set_xlabel("Percentage difference in gray matter volume\nT2DM+ vs. HC (%)")
 
 # Figure formatting
 # ------
 
 # Add common suptitle
-plt.suptitle("\t\t\t"*2 + "Gray matter volume changes associated with age and T2DM: " \
-             "UK Biobank dataset")
+plt.suptitle("\t\t\t" + "Region specific gray matter volume changes associated with age and T2DM: " \
+             "UK Biobank dataset", va="top", y=0.985)
 
 ## Add common x label
 #plt.gcf().text(0.6, 0.03, "Change In Gray Matter Volume (%)", ha='center',
 #        fontsize=14*fs, fontweight="bold")
 
 
-plt.tight_layout(rect=[0, 0.05, 1, 0.98])
+plt.tight_layout(rect=[0, 0.00, 1, 1.03])
 plt.savefig(OUTDIR + "figures/JAMA_meta_figure_volume.pdf",
             transparent=True)
 plt.close("all")

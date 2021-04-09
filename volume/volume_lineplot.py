@@ -21,7 +21,7 @@ from tqdm import tqdm
 from IPython import get_ipython
 
 get_ipython().run_line_magic('cd', '..')
-from helpers.regression_helpers import check_covariance, match_multi, check_assumptions
+from helpers.regression_helpers import check_covariance, match, check_assumptions
 from helpers.plotting_style import plot_pars, plot_funcs
 get_ipython().run_line_magic('cd', 'volume')
 
@@ -35,8 +35,10 @@ SRCDIR = HOMEDIR + "data/"
 OUTDIR = HOMEDIR + "results/volume/"
 
 # Inputs
+CTRS = "diab"  # Contrast: diab or age
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
+RLD = True
 
 #raise
 
@@ -99,7 +101,7 @@ age_onset = age_onset \
 # =============================================================================
 
 # Status
-print(f"Transforming.")
+print("Transforming.")
 
 
 # Choose variables and group per duration
@@ -109,45 +111,55 @@ regressors = functools.reduce(
         ) \
         .drop("age_onset", axis=1) \
 
+# Merge regressors with data
+regressors_y = regressors.merge(data, on="eid", how="inner")
+
+# Drop data columns
+regressors_clean = regressors_y.drop("volume", axis=1)
+
+# Match
+if RLD == False:
+    # Match
+    regressors_matched = match(
+            df=regressors_clean,
+            main_var="diab",
+            vars_to_match=["age", "sex", "college"],
+            N=1,
+            random_state=1
+            )
+
+# Save matched regressors matrix
+if RLD == False:
+    regressors_matched \
+        .reset_index(drop=True) \
+        .to_csv(OUTDIR + "regressors/pub_meta_volume_combined_matched_" \
+                f"regressors_{CTRS}.csv")
+
+# Get regressors
+regressors_matched = pd.read_csv(
+        OUTDIR + f"regressors/pub_meta_volume_combined_matched_regressors_" \
+        f"{CTRS}.csv",
+        index_col=0)
+
+# Linear regression
+df = regressors_matched \
+    .merge(data, on="eid") \
+
+model = smf.ols(f"volume ~ diab + age + C(sex) + C(college) + C(ses) + bmi", data=df)
+results = model.fit()
+print(results.summary())
+
+
 # Merge and standardize
-df = regressors \
+df = regressors_matched \
     .merge(data, on="eid") \
     .pipe(lambda df: df.assign(**{"age_group":
             pd.cut(df["age"], bins=np.arange(0, 100, 5)).astype(str)
             })) \
     .sort_values(by="age") \
-    .query('age_group not in ["(40, 45]", "(45, 50]", "(75, 80]"]')
-
-# %%
-# =============================================================================
-# Statistics
-# =============================================================================
-
-# Prep
-# ------
-# matching needed? YES! + stats needed for both
-## Fit
-## ------
-#
-## Fit the model to get brain age
-#model = smf.ols(f"volume ~ age + C(diab) + C(sex) + C(college) + C(ses) + bmi", data=df)
-#results = model.fit()
-#
-## Monitor
-## --------
-#
-## Save detailed stats report
-#with open(OUTDIR + f"stats_misc/pub_meta_volume_regression_table_{feat}" \
-#          f"_{CTRS}.html", "w") as f:
-#    f.write(results.summary().as_html())
-#
-## Check assumptions
-#check_assumptions(
-#        results,
-#        sdf,
-#        prefix=OUTDIR + \
-#        f"stats_misc/pub_meta_volume_stats_assumptions_{CTRS}"
-#        )
+    .query('age_group not in ["(40, 45]"]') \
+    .query('age_group not in ["(40, 45]", "(45, 50]"]') \
+#    .query('age_group not in ["(40, 45]", "(45, 50]", "(75, 80]"]')
 
 # %%
 # =============================================================================
@@ -162,10 +174,10 @@ print(f"Plotting.")
 # Unpack plotting utils
 fs, lw = plot_pars
 p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
-
+lw = lw*1.5
 
 # Sample sizes
-#print("Sampe sizes, age info:\n", gdf.groupby(['duration_group', 'age_group'])["age"].describe())
+ss = regressors_matched.groupby(["diab"])["eid"].count().to_list()
 
 # Colors
 palette = sns.color_palette(["black", "red"])
@@ -179,29 +191,18 @@ plt.figure(figsize=(4.25, 5.5))
 # Create plot
 sns.lineplot(data=df, x="age_group", y="volume",
          hue="diab", ci=68, err_style="bars",
-         marker="o", linewidth=1*lw, markersize=2*lw, err_kws={"capsize": 2*lw,
+         marker="o", linewidth=1*lw, markersize=3*lw, err_kws={"capsize": 2*lw,
                                                          "capthick": 1*lw,
                                                          "elinewidth": 1*lw},
          sort=False, palette=palette)
-
-# Annotate stats
-#tval, pval = results.tvalues["duration"], results.pvalues["duration"]
-#text = f"Time since T2DM diagnosis\nas a continuous linear factor:\n" \
-#       f"$\mathbf{{H_0}}$:  $\mathrm{{\\beta}}$$\mathbf{{_t}}$ = 0\n" \
-#       f"$\mathbf{{H_1}}$:  $\mathrm{{\\beta}}$$\mathbf{{_t}}$ ≠ 0\n" \
-#       f"T = {tval:.1f}\n{pformat(pval)}" \
-#       f"{p2star(pval)}"
-
-#plt.annotate(text, xycoords="axes fraction", xy=[0.85, 0.6],
-#             fontsize=14*fs, fontweight="bold", ha="center")
-
 
 # Format
 # ----
 
 # Title
-plt.title("Gray matter atrophy across age and T2DM status:\n" \
-          f"UK Biobank dataset ")
+plt.title("Gray matter volume across age and T2DM status:\n" \
+          f"(age, education and sex-matched)\nN$_{{T2DM+}}$={ss[1]:,}, " \
+          f"N$_{{HC}}$={ss[0]:,}")
 
 plt.xlabel("Age group (year)")
 #plt.ylabel("Gray matter volume delineated\nbrain age (y)")
@@ -216,7 +217,7 @@ legend_handles, _ = plt.gca().get_legend_handles_labels()
 [ha.set_linewidth(5) for ha in legend_handles]
 
 plt.legend(handles=legend_handles[::-1],
-           labels=["T2DM+", "T2DM-"],
+           labels=["T2DM+", "HC"],
            loc=1)
 
 plt.gca().xaxis.tick_bottom()
@@ -226,13 +227,19 @@ for sp in ['bottom', 'top', 'left', 'right']:
     plt.gca().spines[sp].set_linewidth(2)
     plt.gca().spines[sp].set_color("black")
 
+# Annotate stats
+tval, pval = results.tvalues["diab"], results.pvalues["diab"]
+text = f"T2DM+ vs HC:\nT={tval:.1f}, {pformat(pval)}{p2star(pval)}"
+plt.annotate(text, xycoords="axes fraction", xy=[0.279, 0.1],
+             fontsize=8*fs, fontweight="bold", ha="center")
+
 plt.gca().yaxis.grid(True)
 plt.tight_layout()
 
 # Save
 # ----
 
-plt.tight_layout(rect=[0, 0.05, 1, 0.98])
+plt.tight_layout(rect=[0, 0, 1, 0.92])
 plt.savefig(OUTDIR + "figures/JAMA_meta_figure_volume_lineplot.pdf",
             transparent=True)
 plt.close("all")

@@ -46,7 +46,6 @@ CTRS = "age"  # Contrast: diab or age
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
 PARC = 46  # Type of parcellation to use, options: 46 or 139
-excl_sub = [] # [1653701, 3361084, 3828231, 2010790, 2925838, 3846337,]  # Subjects
 ## to exlucde due to abnormal total gray matter volumes
 excl_region = ["Pallidum"]  # Regions to exclude
 RLD = False  # Reload regressor matrices instead of computing them again
@@ -75,9 +74,6 @@ head_norm = data.merge(head_norm, on="eid", how="inner")[["eid", "norm_fact"]]
 
 # Rename columns
 data = data.rename(labels, axis=1).set_index("eid")
-
-# Exclude subjects
-data = data.query(f'eid not in {excl_sub}')
 
 # Load regressors
 # ------

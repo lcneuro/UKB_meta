@@ -36,8 +36,8 @@ CTRS_label = "Metformin only (T2DM+) vs unmedicated (T2DM+)"
 # Case specific values
 cases = [CTRS]
 titles = [
-        "Cognitive performance as a function of\nmetformin medication status:" \
-          f"\nUK Biobank dataset\n({CTRS_label},\nage, sex and disease duration matched)\n"
+        "Domain specific cognitive performance\n" \
+        f"({CTRS_label},\nage, education, sex and disease duration matched)\n"
         ]
 ylabeltexts = [
         f"Percentage difference in task performance\n{CTRS_label} (% of avg)",
@@ -46,7 +46,7 @@ colors = ["coolwarm"]
 ylims = [[-30, 10]]
 sfs = [1e2]  # Marker size factors
 sfscf = [500]  # Marker size scale factors
-sdxo = [0.92]  # x axis offset of scale info
+sdxo = [0.99]  # x axis offset of scale info
 textpads = [0.1]  # Padding for text along y axis
 xtickrots = [0]  # Rotation of xticks
 xtickvas = ["top"]  # Vertical alignment for xticks
@@ -99,7 +99,7 @@ for case in cases:
 # Figure
 # =============================================================================
 
-f = plt.figure(figsize=(4.25, 5.5))
+f = plt.figure(figsize=(3.75, 5.5))
 plt.suptitle("")
 
 # Panels A & B
@@ -142,12 +142,12 @@ for c, case in enumerate(cases):
         plt.scatter(x=x, y=y, s=sum(ss)**2/sfs[c], color=colors_all[i])
                     #"mediumblue")
 
-        # Small dot to represent center
-        plt.scatter(x=x, y=y, s=12*lw, color="k")
+        # Plot center of estimate
+        plt.scatter(x=x, y=y, s=15*lw, color="k")
 
         # Errorbars
-        plt.errorbar(x, y, yerr=conf_dist, capsize=2.5*lw, capthick=0.5*lw,
-                     elinewidth=0.5*lw, color="black")
+        plt.errorbar(x, y, yerr=conf_dist, capsize=4*lw, capthick=0.75*lw,
+                     elinewidth=0.75*lw, color="black")
 
     #    # Annotate stats as text
     #    text = f"T={t:.1f} \n {pformat(p)}" + p2star(p) \
@@ -170,7 +170,8 @@ for c, case in enumerate(cases):
 
     # Format
     # Add title
-    plt.title(titles[c])
+    ttl = plt.title(titles[c])
+    ttl.set_x(ttl.get_position()[0]-0.12)
 
     # Limits
     plt.xlim([-0.5, len(df)-0.5])
@@ -199,6 +200,17 @@ for c, case in enumerate(cases):
     plt.gca().xaxis.grid(False)
     plt.gca().yaxis.grid(True)
     plt.gca().set_axisbelow(True)
+
+    # Add arrow representing directionality
+    plt.gca().annotate("improvement",
+                xy=(0.02, 0.95), xycoords='axes fraction',
+                xytext=(0.02, 0.5), textcoords='axes fraction',
+                arrowprops=dict(arrowstyle="fancy, head_width=1, head_length=2",
+                                connectionstyle="arc3",
+                                facecolor='salmon',
+                                linewidth=0.2),
+                va="center", ha="center", fontsize=6, rotation=90
+                )
 
     # Add scale
     plt.scatter(x=len(df)-sdxo[c], y=ylims[c][0] * 0.94, s=sfscf[c]**2/sfs[c],
@@ -251,7 +263,7 @@ for c, case in enumerate(cases):
 
 # Save
 # ------
-plt.tight_layout(h_pad=2)
+plt.tight_layout(rect=[0, 0, 1, 0.95])
 plt.savefig(OUTDIR + f"figures/JAMA_meta_figure_med_cognition_{CTRS}.pdf",
             transparent=True)
 

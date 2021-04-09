@@ -57,7 +57,6 @@ BATCH = 7  # Batch of preprocessed images to use
 
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
-excl_sub = [] # [1653701, 3361084, 3828231, 2010790, 2925838, 3846337,]  # Subjects
 ## to exlucde due to abnormal total gray matter neurofunctions
 
 CTRS = "diab"  # Contrast: diab or age

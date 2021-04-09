@@ -129,11 +129,14 @@ fore_neg = image.math_img('img < 0', img=fore)
 fig = plt.figure(figsize=(8.5, 2.2))
 #plt.suptitle("Overlaid effects in ALFF with respect to age and T2DM: " \
 #             "UK Biobank dataset")
+
 display = plotting.plot_roi(back, cmap=cmap, cut_coords=cut_coords,
                             vmin=-vm, vmax=vm, black_bg=True, figure=fig,
-                            colorbar=True, draw_cross=False)
+                            colorbar=True, draw_cross=False, annotate=False)
 display.add_contours(fore_pos, colors="red", alpha=1, linewidths=0.5*lw)
 display.add_contours(fore_neg, colors="blue", alpha=1, linewidths=0.5*lw)
+
+display.annotate(size=7)
 
 plt.savefig(OUTDIR + f'figures/JAMA_meta_neurofunction_{MDL}_age-diab_overlap.pdf',
             transparent=True)
@@ -196,9 +199,11 @@ fig = plt.figure(figsize=(8.5, 2.2))
 #             "Meta-analysis from Neuroquery")
 display = plotting.plot_roi(back, cmap=cmap, cut_coords=cut_coords,
                             vmin=-vm, vmax=vm, black_bg=True, figure=fig,
-                            colorbar=True, draw_cross=False)
+                            colorbar=True, draw_cross=False, annotate=False)
 display.add_contours(fore_pos, colors="red", alpha=1, linewidths=0.5*lw)
 display.add_contours(fore_neg, colors="blue", alpha=1, linewidths=0.5*lw)
+
+display.annotate(size=7)
 
 plt.savefig(HOMEDIR + "results/neuroquery/figures/JAMA_meta_neuroquery_age" \
             "-diab_overlap.pdf", transparent=True)

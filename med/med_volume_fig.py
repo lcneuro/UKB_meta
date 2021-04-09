@@ -59,7 +59,7 @@ colors = colors_from_values(
 colors_dict = {i: colors[i] for i in range(len(colors))}
 
 # Make figure
-plt.figure(figsize=(4.25, 5.5))
+plt.figure(figsize=(4.75, 5.5))
 
 # Plot
 sns.barplot(data=df, y="label", x="beta",
@@ -87,7 +87,7 @@ for _, item in tqdm(enumerate(df.iterrows()), total=len(df)):
 
     conf_dist = abs(x - np.array(conf_int))[:, None]
 
-    ax.errorbar(x, y, xerr=conf_dist, capsize=1*lw, capthick=lw*0.25,
+    ax.errorbar(x, y, xerr=conf_dist, capsize=0.7*lw, capthick=lw*0.25,
                  elinewidth=lw*0.25, color="black", zorder=100)
 
 #    text = pformat(p) + p2star(p ) if PRINT_P \
@@ -106,22 +106,43 @@ for _, item in tqdm(enumerate(df.iterrows()), total=len(df)):
     ax.annotate("   " + text + "   ", xy=[xtext, ytext],
                  ha=ha, va="center", fontsize=8*fs, fontweight="bold")
 
+# Format bars
+for bar in ax.patches:
+    w=0.7
+    y = bar.get_y()
+    bar.set_y(y + (0.8 - w)/2)
+    bar.set_height(w)
+
 
 # Add spines
 for sp in ['bottom', 'top', 'right', 'left']:
     ax.spines[sp].set_linewidth(0.5*lw)
     ax.spines[sp].set_color("black")
 
+# Add arrow representing directionality
+ax.annotate("improvement",
+            xy=(0.7, 0.98), xycoords='axes fraction',
+            xytext=(0.15, 0.98), textcoords='axes fraction',
+            arrowprops=dict(arrowstyle="fancy, head_width=1, head_length=2",
+                            connectionstyle="arc3",
+                            facecolor='salmon',
+                            linewidth=0.2),
+            va="center", fontsize=6
+            )
+
 # Add labels
 ss = df["sample_sizes"]
 ax.set_xlabel(f"Percentage difference in gray matter volume\n{CTRS_label}\n(% of avg)")
 
-plt.title("Gray matter volume as a function of\nmetformin medication status:" \
-          f"\nUK Biobank dataset\n({CTRS_label},\nage, sex and disease duration matched)\n" \
-          + f"(N$_{{metf+}}$={ss[0][1]:,}, N$_{{metf-}}$={ss[0][0]:,})")
+ttl = plt.title("Region specific gray matter volume \n" \
+          f"({CTRS_label},\nage, education, sex and disease duration matched)\n" \
+          + f"N$_{{metf+}}$={ss[0][1]:,}, N$_{{metf-}}$={ss[0][0]:,}")
+ttl.set_x(ttl.get_position()[0]-0.15)
+
+
 ax.set_ylabel("")
 
-plt.tight_layout(rect=[0, 0.05, 1, 0.98])
+plt.tight_layout(rect=[0, 0, 1, 0.95])
 plt.savefig(OUTDIR + f"figures/JAMA_meta_figure_med_volume_{CTRS}.pdf",
             transparent=True)
 plt.close("all")

@@ -42,8 +42,7 @@ DUR_CO = 10  # Year to separate subjects along duration <x, >=x
 PARC = 46  # Type of parcellation to use, options: 46 or 139
 excl_sub = [] # [1653701, 3361084, 3828231, 2010790, 2925838, 3846337,]  # Subjects
 ## to exlucde due to abnormal total gray matter volumes
-excl_region = ["Pallidum"]  # Regions to exclude
-RLD = False # Reload regressor matrices instead of computing them again
+RLD = True # Reload regressor matrices instead of computing them again
 
 #raise
 
@@ -69,9 +68,6 @@ head_norm = data.merge(head_norm, on="eid", how="inner")[["eid", "norm_fact"]]
 
 # Rename columns
 data = data.rename(labels, axis=1).set_index("eid")
-
-# Exclude subjects
-data = data.query(f'eid not in {excl_sub}')
 
 # Load regressors
 # ------
@@ -229,6 +225,8 @@ results = model.fit()
 # Monitor
 # --------
 
+#print(results.summary())
+
 # Save detailed stats report
 with open(OUTDIR + f"stats_misc/pub_meta_volume_regression_table_{feat}" \
           f"_{CTRS}.html", "w") as f:
@@ -252,6 +250,7 @@ check_assumptions(
 # Unpack plotting utils
 fs, lw = plot_pars
 p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
+lw = lw*1.5
 
 # Get data
 gdf = df.copy()
@@ -302,12 +301,13 @@ plt.annotate(text, xycoords="axes fraction", xy=[0.279, 0.03],
 # ----
 
 # Title
-plt.title("Gray matter atrophy across age and\nT2DM disease progression:\n" \
-          f"UK Biobank dataset\n" \
-          f"(N$_{{≥10 years}}$={int(gdf.shape[0]/3)}, " \
+ttl = plt.title("Gray matter atrophy across age and T2DM disease duration:\n" \
+          f"UK Biobank dataset (age, education and sex-matched)\n"
+          f"N$_{{≥10 years}}$={int(gdf.shape[0]/3)}, " \
           f"N$_{{0-9 years}}$={int(gdf.shape[0]/3)}, " \
-          f"N$_{{HC}}$={int(gdf.shape[0]/3)}, "
-          "\nage and sex-matched)")
+          f"N$_{{HC}}$={int(gdf.shape[0]/3)}\n"
+          )
+ttl.set_x(ttl.get_position()[0]-0.056)
 
 plt.xlabel("Age group (year)")
 #plt.ylabel("Gray matter volume delineated\nbrain age (y)")
@@ -339,7 +339,7 @@ plt.tight_layout()
 # Save
 # ----
 
-plt.tight_layout(rect=[0, 0.05, 1, 0.98])
+plt.tight_layout(rect=[0, 0., 1, 0.99])
 plt.savefig(OUTDIR + "figures/JAMA_meta_figure_volume_acceleration.pdf",
             transparent=True)
 plt.close("all")

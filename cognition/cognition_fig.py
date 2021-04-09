@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import itertools
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mtc0.5*lwcaps
+import matplotlib.ticker as mtc
 import seaborn as sns
 from IPython import get_ipython
 
@@ -38,20 +38,17 @@ OUTDIR = HOMEDIR + "results/cognition/"
 # Case specific values
 cases = ["age", "diab", "meta"]
 titles = [
-        "Cognitive deficits associated with age:\n" \
-            "UK Biobank dataset (T2DM- only, education " \
+        "Age: UK Biobank dataset\n(HC only, education " \
             "and sex-matched)",
-        "Cognitive deficits associated with T2DM:\n" \
-            "UK Biobank dataset (T2DM+ vs. T2DM-, age, education " \
+        "T2DM: UK Biobank dataset\n(T2DM+ vs. HC, age, education " \
             "and sex-matched)",
-        "Cognitive deficits associated with T2DM:\n" \
-            "meta-analysis of published literature (T2DM+ vs. T2DM–, age, education " \
-            "and sex-matched)",
+        "T2DM: meta-analysis of published literature\n(T2DM+ vs. HC, age," \
+        "education and sex-matched)",
         ]
 ylabeltexts = [
         "Percentage change in task performance\nacross age (% per year)",
-        "Percentage difference in task performance\nT2DM+ vs. T2DM- (%)",
-        "Standardized mean difference\nT2DM+ vs. T2DM- (Cohen's d)"
+        "Percentage difference in task performance\nT2DM+ vs. HC (%)",
+        "Standardized mean difference\nT2DM+ vs. HC (Cohen's d)"
         ]
 colors = ["Purples", "Blues", "bone_r"]
 ylims = [[-2.5, 0.3], [-17.0, 2.5], [-0.75, 0.2]]
@@ -130,8 +127,8 @@ fs, lw = plot_pars
 p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
 
 # Figure
-f = plt.figure(figsize=(8.1, 11))
-plt.suptitle("Cognitive deficits associated with age and T2DM\n")
+f = plt.figure(figsize=(8.5, 11))
+plt.suptitle("Domain specific cognitive deficits associated with age and T2DM\n")
 
 # Panels A & B
 # ------
@@ -174,11 +171,11 @@ for c, case in enumerate(cases):
                         #"mediumblue")
 
             # Plot center of estimate
-            plt.scatter(x=x, y=y, s=25*lw, color="k")
+            plt.scatter(x=x, y=y, s=15*lw, color="k")
 
             # Errorbars
-            plt.errorbar(x, y, yerr=conf_dist, capsize=5*lw, capthick=lw,
-                         elinewidth=lw, color="black")
+            plt.errorbar(x, y, yerr=conf_dist, capsize=4*lw, capthick=0.75*lw,
+                         elinewidth=0.75*lw, color="black")
 
         #    # Annotate stats as text
         #    text = f"T={t:.1f} \n {pformat(p)}" + p2star(p) \
@@ -220,11 +217,11 @@ for c, case in enumerate(cases):
             plt.scatter(x=x, y=y, s=K**2/sfs[c], color=colors_all[i])
 
             # Plot center of estimate
-            plt.scatter(x=x, y=y, s=25*lw, color="k")
+            plt.scatter(x=x, y=y, s=15*lw, color="k")
 
             # Errorbars
-            plt.errorbar(x, y, yerr=conf_dist, capsize=5*lw, capthick=lw,
-                         elinewidth=lw, color="black")
+            plt.errorbar(x, y, yerr=conf_dist, capsize=4*lw, capthick=0.75*lw,
+                         elinewidth=0.75*lw, color="black")
 
         #    # Annotate stats as text
         #    text = \

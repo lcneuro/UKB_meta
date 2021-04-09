@@ -4,6 +4,9 @@
 Created on Sun Mar 28 11:13:40 2021
 
 @author: botond
+
+This is a temporary script.
+
 """
 
 import os
@@ -50,7 +53,7 @@ RLD = False # Reload regressor matrices instead of computing them again
 # Load data
 # =============================================================================
 
-# Load volume data
+# Load neurofunction data
 # -------
 # Load atrophy data
 data = pd.read_csv(SRCDIR + "neurofunction/avg_alff.csv", index_col=0)

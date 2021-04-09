@@ -82,7 +82,7 @@ vol_field = "beta"  # Numerical field to consider from volumetric data
 
 gm_thr = 0.5  # GM threshold
 
-#raise
+raise
 # %%
 # =============================================================================
 # Import data
@@ -350,13 +350,13 @@ annot_text = [f"{rhos[i]:.2f}\n" + p2star(pvals[i]) for i in range(len(rhos))]
 annot_df = pd.DataFrame(np.array(annot_text).reshape(corr_matrix.shape))
 
 # Correlation plot
-plt.figure(figsize=(8.5, 5.5))
-plt.rcParams['xtick.labelsize']=16
-plt.rcParams['ytick.labelsize']=16
-plt.title(f"Parcellation: {PC}, {CORRMET}, {EXTRA}")
+plt.figure(figsize=(6.4, 5.1))
+#plt.rcParams['xtick.labelsize']=16
+#plt.rcParams['ytick.labelsize']=16
+plt.title(f"Correlation based similarities among effects and datasets")
 sns.heatmap(corr_matrix, vmin=-1, vmax=1, cmap="seismic", annot=annot_df,
             fmt="", linewidth=1, linecolor="k",
-            annot_kws={"fontsize": 16})
+            annot_kws={"fontsize": 8*fs})
 plt.xticks(rotation=45, ha="right");
 plt.tight_layout()
 plt.savefig(OUTDIR + f"figures/corr_matrix_{PC}_{CORRMET}{EXTRA}.pdf")

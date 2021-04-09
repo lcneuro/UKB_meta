@@ -43,8 +43,7 @@ OUTDIR = HOMEDIR + "results/cognition/"
 CTRS = "diab"  # Contrast: diab or age
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
-excl_sub = []  # SUbjects to exlude, if any
-RLD = False  # Reload regressor matrices instead of computing them again
+RLD = True  # Reload regressor matrices instead of computing them again
 
 #raise
 
@@ -74,9 +73,6 @@ data = pd \
 
 # Rename columns
 data = data.rename(labels, axis=1)
-
-# Exclude subjects
-#data = data.query(f'eid not in {excl_sub}')
 
 # Load regressors
 # ------
