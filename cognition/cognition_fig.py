@@ -38,25 +38,26 @@ OUTDIR = HOMEDIR + "results/cognition/"
 # Case specific values
 cases = ["age", "diab", "meta"]
 titles = [
-        "Age: UK Biobank dataset\n(HC only, education " \
-            "and sex-matched)",
-        "T2DM: UK Biobank dataset\n(T2DM+ vs. HC, age, education " \
-            "and sex-matched)",
-        "T2DM: meta-analysis of published literature\n(T2DM+ vs. HC, age," \
-        "education and sex-matched)",
+        "Age: UK Biobank dataset (HC only)",
+        "T2DM: UK Biobank dataset (T2DM+ vs. HC)",
+        "T2DM: meta-analysis of published literature (T2DM+ vs. HC)",
         ]
 ylabeltexts = [
-        "Percentage change in task performance\nacross age (% per year)",
-        "Percentage difference in task performance\nT2DM+ vs. HC (%)",
+        "Percentage change in cognitive\nperformance across age (% per year)",
+        "Percentage difference in cognitive\nperformance T2DM+ vs. HC (%)",
         "Standardized mean difference\nT2DM+ vs. HC (Cohen's d)"
         ]
-colors = ["Purples", "Blues", "bone_r"]
+colors = ["PiYG", "YlGnBu", "cool"]
 ylims = [[-2.5, 0.3], [-17.0, 2.5], [-0.75, 0.2]]
-sfs = [4e4, 1e3, 0.3]  # Marker size factors
+sfs = [8e4, 2e3, 0.4]  # Marker size factors
 sfscf = [15000, 2000, 25]  # Marker size scale factors
-sdxo = [0.76, 0.75, 0.9]  # x axis offset of scale info
-textpads = [0.1, 0.2, 0.02]  # Padding for text along y axis
-xtickrots = [0, 0, 0]  # Rotation of xticks
+sdxo = [0.86, 0.79, 0.94]  # x axis offset of scale info
+sfscf2 = [10000, 1000, 10]  # Marker size scale factors
+sdxo2 = [0.76, 0.75, 0.9]  # x axis offset of scale info
+cms = [20, 4, 1]  # Colormap scaling to distort - gradient
+cmo = [4.5, 2, 1]  # Colormap offset - intensity
+textpads = [0.1, 1, 0.05]  # Padding for text along y axis
+xtickrots = [0, 0, 45]  # Rotation of xticks
 xtickvas = ["top", "top", "top"]  # Vertical alignment for xticks
 xtickpads = [0, 0, 0]  # Paddong fo xticks
 
@@ -127,7 +128,7 @@ fs, lw = plot_pars
 p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
 
 # Figure
-f = plt.figure(figsize=(8.5, 11))
+f = plt.figure(figsize=(7.25, 9))
 plt.suptitle("Domain specific cognitive deficits associated with age and T2DM\n")
 
 # Panels A & B
@@ -154,7 +155,7 @@ for c, case in enumerate(cases):
 
         # Colors
         colors_all = colors_from_values(
-            np.array(list(-df["beta"]) + [df["beta"].min() + 2, df["beta"].max()]),
+            np.array(list(-df["beta"])*cms[c] + [df["beta"].min() + cmo[c], df["beta"].max()*cms[c]]),
             colors[c])
 
         for i, item in enumerate(df.iterrows()):
@@ -189,10 +190,13 @@ for c, case in enumerate(cases):
             # Add statistical asterisks
             text = p2star(p)
             text_x = x + 0.00
-            text_y =  min(conf_int) - textpads[c] \
-                    if y < 0 else max(conf_int) + textpads[c]
+            if y < 0:
+                text_y = min(min(conf_int), y-sum(ss)/sfs[c]/3.4e-1) - textpads[c]
+            else:
+                text_y = max(max(conf_int), sum(ss)/sfs[c]/3.4e-1) + textpads[c]
+
             va = "top" if y < 0 else "bottom"
-            plt.annotate(text, xy=[text_x, text_y], fontsize=12*fs,
+            plt.annotate(text, xy=[text_x, text_y], fontsize=8*fs,
                          ha="center", va=va, fontweight="bold",
                          rotation=0)
 
@@ -200,7 +204,8 @@ for c, case in enumerate(cases):
 
         # Colors
         colors_all = colors_from_values(
-            np.array(list(-df["EFFS"]) + [df["EFFS"].min() + 1, df["EFFS"].max()]),
+            np.array(list(-df["EFFS"])*cms[c] + [df["EFFS"].min() + cmo[c],
+                     df["EFFS"].max()*cms[c]]),
             colors[c])[:-2]
 
 
@@ -243,8 +248,10 @@ for c, case in enumerate(cases):
             # Add statistical asterisks
             text = p2star(p)
             text_x = x + 0.00
-            text_y =  min(conf_int) - textpads[c] \
-                    if y < 0 else max(conf_int) + textpads[c]
+            if y < 0:
+                text_y = min(min(conf_int), y-K**2/sfs[c]/1.5e4) - textpads[c]
+            else:
+                text_y = max(max(conf_int), y-K**2/sfs[c]/3.4e-1) + textpads[c]
             va = "top" if y < 0 else "bottom"
             plt.annotate(text, xy=[text_x, text_y], fontsize=8*fs,
                          ha="center", va=va, fontweight="bold",
@@ -267,7 +274,7 @@ for c, case in enumerate(cases):
             mtc.FuncFormatter(lambda x, p: format(f"{x:.1f}")))
 
     # Ticks/lines
-    plt.axhline(0, linewidth=0.5*lw, color="black", dashes=[4, 4])
+    plt.axhline(0, linewidth=0.75*lw, color="black", dashes=[4, 4])
     plt.xticks(ticks=np.arange(len(df)), labels=df["label"],
                rotation=xtickrots[c], va=xtickvas[c])
     plt.gca().tick_params(axis="x", pad=xtickpads[c])
@@ -275,7 +282,7 @@ for c, case in enumerate(cases):
     plt.gca().yaxis.tick_left()
 
     for sp in ['bottom', 'top', 'left', 'right']:
-        plt.gca().spines[sp].set_linewidth(0.5*lw)
+        plt.gca().spines[sp].set_linewidth(.75*lw)
         plt.gca().spines[sp].set_color("black")
 
     plt.gca().xaxis.grid(False)
@@ -285,8 +292,10 @@ for c, case in enumerate(cases):
     # Add scale
     plt.scatter(x=len(df)-sdxo[c], y=ylims[c][0] * 0.88, s=sfscf[c]**2/sfs[c],
                 color="gray")
+#    plt.scatter(x=len(df)-sdxo2[c], y=ylims[c][0] * 0.88, s=sfscf2[c]**2/sfs[c],
+#                color="lightgray")
 
-    plt.annotate(text=f"Scale:\nN={sfscf[c]}",
+    plt.annotate(text=f"Scale:\n{'N' if c<2 else 'K'}={sfscf[c]}",
                  xy=[len(df)-sdxo[c], ylims[c][0] * 0.88], va="center", ha="center")
 
 ## Caption info, !: not quite correct, cases with scores are more complex than
@@ -333,7 +342,7 @@ for c, case in enumerate(cases):
 
 # Save
 # ------
-plt.tight_layout(h_pad=3)
+plt.tight_layout(h_pad=2)
 plt.savefig(OUTDIR + "figures/JAMA_meta_figure_cognition.pdf",
             transparent=True)
 

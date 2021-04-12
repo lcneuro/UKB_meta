@@ -36,7 +36,9 @@ OUTDIR = HOMEDIR + "results/cognition/"
 # Inputs
 CTRS = "diab"  # Contrast: diab or age
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
-RLD = True  # Reload regressor matrices instead of computing them again
+RLD = 1  # Reload regressor matrices instead of computing them again
+
+print("\nRELOADING REGRESSORS!\n") if RLD else ...
 
 #raise
 
@@ -67,9 +69,6 @@ data = pd \
 # Rename columns
 data = data.rename(labels, axis=1)
 
-# Exclude subjects
-#data = data.query(f'eid not in {excl_sub}')
-
 # Load regressors
 # ------
 # Age
@@ -88,14 +87,6 @@ diab = pd.read_csv(SRCDIR + "ivs/diab.csv", index_col=0)[["eid", "diab-2"]] \
 
 # College
 college = pd.read_csv(SRCDIR + "ivs/college.csv", index_col=0)[["eid", "college"]] \
-
-# Ses
-ses = pd.read_csv(SRCDIR + "ivs/ses.csv", index_col=0)[["eid", "ses"]]
-
-# BMI
-bmi = pd.read_csv(SRCDIR + "ivs/bmi.csv", index_col=0)[["eid", "bmi-2"]] \
-    .rename({"bmi-2": "bmi"}, axis=1) \
-    .dropna(how="any")
 
 # Age of diabetes diagnosis (rough estimate!, averaged)
 age_onset = pd \
@@ -123,7 +114,7 @@ print(f"Transforming.")
 # Choose variables
 regressors = functools.reduce(
         lambda left, right: pd.merge(left, right, on="eid", how="inner"),
-        [diab, age, sex, college, ses, bmi, age_onset]
+        [diab, age, sex, college, age_onset]
         ) \
         .drop("age_onset", axis=1)
 
@@ -150,41 +141,25 @@ if RLD == False:
             main_var="diab",
             vars_to_match=["age", "sex", "college"],
             N=1,
-            random_state=2
+            random_state=100
             )
 
 # Save matched regressors matrix
 if RLD == False:
     regressors_matched \
         .reset_index(drop=True) \
-        .to_csv(OUTDIR + "regressors/pub_meta_cognition_combined_matched_" \
+        .to_csv(OUTDIR + "regressors/pub_meta_cognition_lineplot_matched_" \
                 f"regressors_{CTRS}.csv")
+
+# =============================================================================
+# Statistics
+# =============================================================================
 
 # Get regressors
 regressors_matched = pd.read_csv(
-        OUTDIR + f"regressors/pub_meta_cognition_combined_matched_regressors_" \
+        OUTDIR + f"regressors/pub_meta_cognition_lineplot_matched_regressors_" \
         f"{CTRS}.csv",
         index_col=0)
-
-# Linear regression
-df = regressors_matched \
-    .merge(data_merged, on="eid") \
-    .set_index(list(reg_cols)) \
-    .pipe(lambda df: df.assign(**{
-        "Short_Term_Memory": df["Short_Term_Memory"],
-         "Executive_Function": -1*df["Executive_Function"],
-         "Abstract_Reasoning": df["Abstract_Reasoning"],
-         "Reaction_Time": -1*df["Reaction_Time"],
-         "Processing_Speed": df["Processing_Speed"]
-         })) \
-    .pipe(lambda df:
-        ((df - df.mean(axis=0))/df.std(axis=0)).mean(axis=1)) \
-    .rename("score") \
-    .reset_index() \
-
-model = smf.ols(f"score ~ diab + age + C(sex) + C(college) + C(ses) + bmi", data=df)
-results = model.fit()
-print(results.summary())
 
 # Merge and standardize
 df = regressors_matched \
@@ -201,13 +176,14 @@ df = regressors_matched \
         ((df - df.mean(axis=0))/df.std(axis=0)).mean(axis=1)) \
     .rename("score") \
     .reset_index() \
-    [["score", "age", "diab"]] \
-    .pipe(lambda df: df.assign(**{"age_group":
-            pd.cut(df["age"], bins=np.arange(0, 100, 5)).astype(str)
-            })) \
-    .sort_values(by="age") \
-    .query('age_group not in ["(40, 45]", "(45, 50]"]') \
-#    .query('age_group not in ["(40, 45]", "(45, 50]", "(75, 80]"]')
+
+# Linear regression
+model = smf.ols(f"score ~ diab + age + C(sex) + C(college)", data=df)
+results = model.fit()
+print(results.summary())
+
+# Estimated age gap between the two cohorts#
+print(f'Estimated age gap: {results.params["diab"]/results.params["age"]:.2f}, years.')
 
 # %%
 # =============================================================================
@@ -222,7 +198,19 @@ print("Plotting.")
 # Unpack plotting utils
 fs, lw = plot_pars
 p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
-lw = lw*1.5
+lw = lw
+
+# Graphing df with age groups
+gdf = df \
+    [["score", "age", "diab"]] \
+    .pipe(lambda df: df.assign(**{"age_group":
+            pd.cut(df["age"], bins=np.arange(0, 100, 5)).astype(str)
+            })) \
+    .sort_values(by="age") \
+    .query('age_group not in ["(40, 45]"]') \
+    .query('age_group not in ["(40, 45]", "(45, 50]"]') \
+#    .query('age_group not in ["(40, 45]", "(45, 50]", "(75, 80]"]')
+
 
 # Sample sizes
 ss = regressors_matched.groupby(["diab"])["eid"].count().to_list()
@@ -234,10 +222,10 @@ palette = sns.color_palette(["black", "red"])
 # -----
 
 # Make figure
-plt.figure(figsize=(4.25, 5.5))
+plt.figure(figsize=(3.625, 5))
 
 # Create plot
-sns.lineplot(data=df, x="age_group", y="score",
+sns.lineplot(data=gdf, x="age_group", y="score",
          hue="diab", ci=68, err_style="bars",
          marker="o", linewidth=1*lw, markersize=3*lw, err_kws={"capsize": 2*lw,
                                                          "capthick": 1*lw,
@@ -248,13 +236,13 @@ sns.lineplot(data=df, x="age_group", y="score",
 # ----
 
 # Title
-plt.title(f"Cognitive performance across age and T2DM status:\n" \
-          f"(age, education and sex-matched)\nN$_{{T2DM+}}$={ss[1]:,}, " \
-          f"N$_{{HC}}$={ss[0]:,}")
+plt.title(f"Cognitive performance across age\nand T2DM status\n" \
+          f"N$_{{T2DM+}}$={ss[1]:,}, " \
+          f"N$_{{HC}}$={ss[0]:,}", x=0.42)
 
 
 plt.xlabel("Age group (year)")
-plt.ylabel("Standardized cognitive performance score)")
+plt.ylabel("Standardized cognitive performance score")
 
 legend_handles, _ = plt.gca().get_legend_handles_labels()
 [ha.set_linewidth(5) for ha in legend_handles]
@@ -263,11 +251,13 @@ plt.legend(handles=legend_handles[::-1],
            labels=["T2DM+", "HC"],
            loc=1)
 
+plt.xticks(rotation=45)
+
 plt.gca().xaxis.tick_bottom()
 plt.gca().yaxis.tick_left()
 
 for sp in ['bottom', 'top', 'left', 'right']:
-    plt.gca().spines[sp].set_linewidth(2)
+    plt.gca().spines[sp].set_linewidth(0.75*lw)
     plt.gca().spines[sp].set_color("black")
 
 # Annotate stats

@@ -91,8 +91,6 @@ diab = pd.read_csv(SRCDIR + "ivs/diab.csv", index_col=0)[["eid", "diab-2"]] \
 # College
 college = pd.read_csv(SRCDIR + "ivs/college.csv", index_col=0)[["eid", "college"]] \
 
-# Ses
-ses = pd.read_csv(SRCDIR + "ivs/ses.csv", index_col=0)[["eid", "ses"]]
 
 # BMI
 bmi = pd.read_csv(SRCDIR + "ivs/bmi.csv", index_col=0)[["eid", "bmi-2"]] \
@@ -136,7 +134,7 @@ print(f"Building regressor matrix with contrast [{CTRS}]")
 # Choose variables
 regressors = functools.reduce(
         lambda left, right: pd.merge(left, right, on="eid", how="inner"),
-        [age, sex, college, ses, bmi, med, duration]
+        [age, sex, college, bmi, med, duration]
         )
 
 # Inner merge regressors with a gm column to make sure all included subjects have data
@@ -146,7 +144,7 @@ regressors_y = y.merge(regressors, on="eid", how="inner")
 ## Fit model
 #sdf = regressors_y
 
-#model = smf.ols(f"feat ~ C(diab) + age + C(sex) + C(college) + C(ses) + bmi", data=sdf)
+#model = smf.ols(f"feat ~ C(diab) + age + C(sex) + C(college) + bmi", data=sdf)
 #results = model.fit()
 #
 ## Print results
@@ -178,7 +176,6 @@ var_dict = {
         "age": "cont",
         "sex": "disc",
         "college": "disc",
-        "ses": "disc",
         "bmi": "cont",
         "duration": "cont"
         }
@@ -214,7 +211,7 @@ if RLD == False:
 ## Fit model
 #sdf = regressors_matched.merge(y, on="eid", how="inner")
 #
-#model = smf.ols(f"feat ~ C({CTRS}) + age + C(sex) + C(college) + C(ses) + bmi + duration", data=sdf)
+#model = smf.ols(f"feat ~ C({CTRS}) + age + C(sex) + C(college) + bmi + duration", data=sdf)
 #results = model.fit()
 #
 ## Print results
@@ -322,7 +319,7 @@ for i, feat in tqdm(enumerate(features), total=len(features), desc="Models fitte
     # Prep
     # ----
     # Extract current feature
-    sdf = df[["eid", "age", "sex", "college", "ses", "bmi", "duration", CTRS, f"{feat}"]]
+    sdf = df[["eid", "age", "sex", "college", "bmi", "duration", CTRS, f"{feat}"]]
 
     # Get sample sizes
     sample_sizes = sdf.groupby(CTRS)["eid"].count()
@@ -330,7 +327,7 @@ for i, feat in tqdm(enumerate(features), total=len(features), desc="Models fitte
     # Fit
     # -----
     # Formula
-    formula = f"{feat} ~ age + C(sex) + C(college) + C(ses) + bmi + duration + {CTRS}"
+    formula = f"{feat} ~ age + C(sex) + C(college) + bmi + duration + {CTRS}"
 
     # Fit model
     model = smf.ols(formula, data=sdf)

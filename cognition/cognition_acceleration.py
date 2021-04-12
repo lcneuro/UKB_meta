@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sun Mar 28 10:20:43 2021
+Created on Sun Mar 28 11:13:40 2021
 
 @author: botond
-
-Notes:
-This script involves a statistical analysis focusing on the acceleration of
-cognitive decline among subjects with T2DM.
-
 """
 
 import os
@@ -17,18 +12,22 @@ import pandas as pd
 import itertools
 import functools
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mtc
 import seaborn as sns
 import pingouin as pg
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
-from scipy import stats
 from tqdm import tqdm
 from IPython import get_ipython
 
 get_ipython().run_line_magic('cd', '..')
-from helpers.regression_helpers import check_covariance, match, check_assumptions
+from helpers.regression_helpers import check_covariance, match_multi, check_assumptions
 from helpers.plotting_style import plot_pars, plot_funcs
 get_ipython().run_line_magic('cd', 'cognition')
+
+# =============================================================================
+# Setup
+# =============================================================================
 
 # Filepaths
 HOMEDIR = os.path.abspath(os.path.join(__file__, "../../../")) + "/"
@@ -36,26 +35,61 @@ SRCDIR = HOMEDIR + "data/"
 OUTDIR = HOMEDIR + "results/cognition/"
 
 # Inputs
-CTRS = "age"  # Contrast: diab or age
+CTRS = "duration"  # Contrast: diab or age
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
-#RLD = True  # Reload regressor matrices instead of computing them again
+DUR_CO = 10  # Year to separate subjects along duration <x, >=x
+PARC = 46  # Type of parcellation to use, options: 46 or 139
+RLD = 1 # Reload regressor matrices instead of computing them again
 
+print("\nRELOADING REGRESSORS!\n") if RLD else ...
+
+#raise
 
 # %%
 # =============================================================================
 # Load data
 # =============================================================================
 
-# Load age info
+# Load cognitive data
+# -------
+# Labels
+labels = {
+     "4282-2.0": "Short_Term_Memory",
+     "6350-2.0": "Executive_Function",
+     "20016-2.0": "Abstract_Reasoning",
+     "20023-2.0": "Reaction_Time",
+     "23324-2.0": "Processing_Speed",
+     }
+
+# Load data
+data = pd \
+    .read_csv(SRCDIR + "cognition/cognition_data.csv") \
+    [["eid",
+      *labels.keys()
+     ]]
+
+# Rename columns
+data = data.rename(labels, axis=1)
+
+# Load regressors
 # ------
 # Age
-age = pd.read_csv(SRCDIR + "ivs/age.csv", index_col=0)[["eid", "age-0", "age-2"]] \
-    .dropna(how="any")
+age = pd.read_csv(SRCDIR + "ivs/age.csv", index_col=0)[["eid", "age-2"]] \
+    .rename({"age-2": "age"}, axis=1)
+
+# Sex
+sex = pd \
+    .read_csv(SRCDIR + "ivs/sex.csv", index_col=0)[["eid", "sex"]] \
+    .set_axis(["eid", "sex"], axis=1)
 
 # Diabetes diagnosis
-diab = pd.read_csv(SRCDIR + "ivs/diab.csv", index_col=0)[["eid", "diab-0", "diab-2"]] \
-    .dropna(how="any")
+diab = pd.read_csv(SRCDIR + "ivs/diab.csv", index_col=0)[["eid", "diab-2"]] \
+    .rename({"diab-2": "diab"}, axis=1) \
+    .query('diab >= 0')
+
+# College
+college = pd.read_csv(SRCDIR + "ivs/college.csv", index_col=0)[["eid", "college"]] \
 
 # Age of diabetes diagnosis (rough estimate!, averaged)
 age_onset = pd \
@@ -65,159 +99,272 @@ age_onset = pd \
     .rename("age_onset") \
     .reset_index()
 
-# Age of onset + some filtering as per age of onset, diabetic status
-"""
-Remove subjects who reported diabetes status (H -> D or D -> H)
-Remove diabetic subjects with missing age of onset OR have too early age of onset
+# Duration
+duration = age_onset \
+    .merge(age, on="eid", how="inner") \
+    .pipe(lambda df: df.assign(**{
+            "duration": df["age"] - df["age_onset"]})) \
+    .dropna(how="any") \
+    [["eid", "duration"]]
+
+# Remove diabetic subjects with missing age of onset OR have too early age of onset
 # which would suggest T1DM. If age of onset is below T1DM_CO, subject is excluded.
-"""
-age_onset \
+age_onset = age_onset \
     .merge(diab, on="eid", how="inner") \
-    .query('`diab-0` == `diab-2`') \
-    .query(f'(`diab-0`==0 & age_onset!=age_onset) or (`diab-0`==1 & age_onset>={T1DM_CO})') \
+    .query(f'(diab==0 & age_onset!=age_onset) or (diab==1 & age_onset>={T1DM_CO})') \
     [["eid", "age_onset"]]
 
-# Merge age info
-age_info = functools.reduce(
+# %%
+# =============================================================================
+# Build regressor matrix
+# =============================================================================
+
+# Status
+print(f"Building regressor matrix with contrast [{CTRS}]")
+
+
+# Choose variables and group per duration
+regressors = functools.reduce(
         lambda left, right: pd.merge(left, right, on="eid", how="inner"),
-        [diab, age, age_onset]
+        [age, sex, college, diab, age_onset]
         ) \
-        .drop("age_onset", axis=1)
+        .drop("age_onset", axis=1) \
+        .merge(duration, on="eid", how="left") \
+        .pipe(lambda df: df.assign(**{
+        "duration_group":
+            df["duration"] \
+                .apply(lambda x: \
+                       "ctrl" if x!=x else \
+                       f"<{DUR_CO}" if x<DUR_CO else \
+                       f">={DUR_CO}" if x>=DUR_CO else np.nan)
+                }
+            ))
 
-# Transform age info
-"""
-# Transform to long format
-Separate dataframe into two based on whether visit specific or not, using regex
-If visit specific, stack out visit to the side
-If not visit specific, duplicate, add visit label and then stack out visit label
-Then add the separated dfs back together along subject and visit index labels
-Rename multiindexes: add visit as label
-"""
+# Get regressor columns for later
+reg_cols = regressors.columns
 
-age_info = age_info \
+# Merge domain data and clean out invalied entries
+data_merged = data[data>0].dropna()
+
+# Get data columns for later
+data_cols = data_merged.columns
+
+# Merge regressors with data
+regressors_y = regressors.merge(data_merged, on="eid", how="inner")
+
+# Drop data columns
+regressors_clean = regressors_y.drop(data_cols[1:], axis=1)
+
+# Save full regressor matrix
+regressors_clean.to_csv(OUTDIR + f"regressors/pub_meta_cognition_acceleration" \
+                        f"_full_regressors_{CTRS}.csv")
+
+# Interactions among independent variables
+var_dict = {
+        "age": "cont",
+        "sex": "disc",
+        "college": "disc",
+        }
+
+for name, type_ in var_dict.items():
+
+    check_covariance(
+            regressors_clean.query(f'{CTRS} == {CTRS}'),
+            var1=CTRS,
+            var2=name,
+            type1="cont",
+            type2=type_,
+            save=True,
+            prefix=OUTDIR + "covariance/pub_meta_cognition_acceleration_covar"
+            )
+
+    plt.close("all")
+
+if RLD == False:
+    # Match
+    regressors_matched = match_multi(
+            df=regressors_clean,
+            main_var="duration_group",
+            vars_to_match=["age", "sex", "college"],
+            N=1,
+            random_state=1
+            )
+
+if RLD == False:
+    # Save matched regressors matrix
+    regressors_matched \
+        .reset_index(drop=True) \
+        .to_csv(OUTDIR + f"regressors/pub_meta_cognition_acceleration" \
+                f"_matched_regressors_{CTRS}.csv")
+
+
+# %%
+# =============================================================================
+# Statistics
+# =============================================================================
+
+# Prep
+# ------
+# Get regressors
+regressors_matched = pd.read_csv(
+        OUTDIR + f"regressors/pub_meta_cognition_acceleration_matched_regressors_{CTRS}.csv",
+        index_col=0)
+
+# Merge cognitive data with regressors, standardize, and compress into an aggregated measure
+df = regressors_matched \
+    .merge(data_merged, on="eid") \
+    .set_index(list(reg_cols)) \
+    .pipe(lambda df: df.assign(**{
+        "Short_Term_Memory": df["Short_Term_Memory"],
+         "Executive_Function": -1*df["Executive_Function"],
+         "Abstract_Reasoning": df["Abstract_Reasoning"],
+         "Reaction_Time": -1*df["Reaction_Time"],
+         "Processing_Speed": df["Processing_Speed"]
+         })) \
     .pipe(lambda df:
-        pd.concat(
-            [df \
-                .filter(regex=r'.-[0-9]', axis=1) \
-                .pipe(lambda df: df.set_axis(df.columns.str \
-                                             .split("-", expand=True),
-                                             axis=1)) \
-                .stack(),
-            df \
-                .filter(regex=r'^[^0-9]+$', axis=1) \
-                .pipe(lambda df: pd \
-                          .concat([df, df], axis=1) \
-                          .set_axis([col+ind for ind in ["-0", "-2"] \
-                                     for col in df.columns],
-                                     axis=1)) \
-                .pipe(lambda df: df.set_axis(df.columns.str \
-                                             .split("-", expand=True),
-                                             axis=1)) \
-                .stack()
-            ],
-            axis=1
-                    )
-            ) \
-    .pipe(lambda df: df.set_index(df.index.set_names(["index", "visit"]))) \
+        ((df - df.mean(axis=0))/df.std(axis=0)).mean(axis=1)) \
+    .rename("score") \
     .reset_index() \
-    .drop("index", axis=1)  \
-    .set_index(["eid", "visit"])
+
+# Take nondiabetic subs
+sdf = df.query('diab == 1')
+
+# Fit
+# ------
+# Feature
+feat = "score"
+
+# Fit the model to get brain age
+model = smf.ols(f"{feat} ~ age + C(sex) + C(college) + duration", data=sdf)
+results = model.fit()
+
+# Monitor
+# --------
+
+#print(results.summary())
+
+# Save detailed stats report
+with open(OUTDIR + f"stats_misc/pub_meta_cognition_acceleration_regression_table_{feat}" \
+          f"_{CTRS}.html", "w") as f:
+    f.write(results.summary().as_html())
+
+## Check assumptions
+#check_assumptions(
+#        results,
+#        sdf,
+#        prefix=OUTDIR + \
+#        f"stats_misc/pub_meta_cognition_acceleration_stats_assumptions_{feat}_{CTRS}"
+#        )
 
 
-# Load cognition data
+# Results
 # -------
-"""
-# Transform cognitive data to long format
-Drop misc columns like age and such
-Set subject as index
-Select predefined cognitive tasks for which instance 0 existed
-Change dash to underscore in column names
-Stack out visit order for each task
-Rename multiindexes: add visit as label
-"""
 
-labels = {
-     "f4282": "Short_Term_Memory",
-     "f20016": "Abstract_Reasoning",
-     "f20023": "Reaction_Time",
-     }
+# Calculate acceleration of aging in additional year/year
+acc_res = results.params["duration"]/results.params["age"]
 
-data = pd \
-        .read_csv(SRCDIR + "cognition/cognition_data.csv") \
-        .drop(["2443-2.0", "2976-2.0", "6138-2.0", "21022-0.0"], axis=1) \
-        .set_index("eid") \
-        [["4282-0.0", "4282-2.0",
-          "20016-0.0", "20016-2.0",
-          "20023-0.0", "20023-2.0"]] \
-        .pipe(lambda df: df.set_axis(
-                ["f" + col.split("-")[0] + "_" + col.split("-")[1][0] \
-                 for col in df.columns],
-                 axis=1)) \
-        .pipe(lambda df: df.set_axis(df.columns.str.split('_', expand=True),
-                                     axis=1)) \
-        .stack() \
-        .pipe(lambda df: df.set_index(df.index.set_names(["eid", "visit"]))) \
-        .rename(labels, axis=1)
+print(f"Acceleration: +{acc_res:.2g} year/year", f'p={results.pvalues["duration"]:.2g},', \
+      "significant" if results.pvalues["duration"]<0.05 else "not significant!")
 
-# Merge meta and cognitive data
-df = pd.concat([age_info, data], axis=1).reset_index()
 
-# Columns containing basic info
-info_cols = ["eid", "visit", "age", "diab"]
 
-# Set eid as string
-df["eid"] = df.eid.astype(str)
+# %%
+# =============================================================================
+# Visualize
+# =============================================================================
 
-# Features to run stat analysis for
-feats = labels.values()
+# Prep
+# -----
+# Unpack plotting utils
+fs, lw = plot_pars
+p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
+lw = lw*1.5
 
-# Itearte over all features
-for feat in feats:
+# Get data
+gdf = df.copy()
 
-    # Extract current feature
-    sdf = df[info_cols + [feat]]
+# Make age groups
+gdf = gdf \
+    .pipe(lambda df:
+        df.assign(**{"age_group": pd.cut(df["age"], np.arange(0, 100, 5),
+               include_lowest=True, precision=0).astype(str)})) \
+    .query('age_group not in ["(40, 45]", "(45, 50]", "(75, 80]"]')
 
-    # Drop nans for current feature
-    sdf = sdf.dropna(axis=0, how="any", subset=["age", "diab", feat])
+# Sort
+gdf = gdf.sort_values(by=["age", "duration"], na_position="first")
 
-    # Extract subjects who have data for both visits
-    subs_double = list(sdf.groupby(["eid"]).count().query('visit == 2').index)
-    sdf = sdf.query(f'(eid in {subs_double})')
+# Sample sizes
+print("Sampe sizes, age info:\n", gdf.groupby(['duration_group', 'age_group'])["age"].describe())
 
-    # Compute the difference between visit 2 and visit 0
-    sdf[["diab_diff", "age_diff", "score_diff"]] = \
-            sdf.groupby(["eid"])[["diab", "age", feat]].apply(lambda x: x.diff())
+# Colors
+palette = sns.color_palette(["black", "tomato", "darkred"])
 
-    # Get rid of nan rows
-    sdf = sdf.dropna(axis=0, how="any", subset=["score_diff"])
+# Content
+# -----
 
-    # Get rid of subjects who have changed diabetes status
-    sdf = sdf.query('diab_diff == 0')
+# Make figure
+plt.figure(figsize=(4.25, 5.5))
 
-    # Divide with age
-    sdf["slope"] = sdf["score_diff"]/sdf["age_diff"]
+# Create plot
+sns.lineplot(data=gdf, x="age_group", y=feat,
+         hue="duration_group", ci=68, err_style="bars",
+         marker="o", linewidth=1*lw, markersize=2*lw, err_kws={"capsize": 2*lw,
+                                                         "capthick": 1*lw,
+                                                         "elinewidth": 1*lw},
+         sort=False, palette=palette)
 
-    # Get sample sizes
-    ss = sdf.groupby(["diab"]).count()["eid"].to_list()
+# Annotate stats
+tval, pval = results.tvalues["duration"], results.pvalues["duration"]
+text = f"T2DM disease duration\nas a continuous linear factor:\n" \
+       f"$\mathbf{{H_0}}$:  $\mathrm{{\\beta}}$$\mathbf{{_t}}$ = 0\n" \
+       f"$\mathbf{{H_1}}$:  $\mathrm{{\\beta}}$$\mathbf{{_t}}$ ≠ 0\n" \
+       f"T = {tval:.1f}\n{pformat(pval)}" \
+       f"{p2star(pval)}"
 
-    # Compare means and compute percentage difference
-    means = sdf.groupby(["diab"])["slope"].mean()
-    perc = abs(means[0] - means[1])/means[0] * 100
+plt.annotate(text, xycoords="axes fraction", xy=[0.279, 0.03],
+             fontsize=8*fs, fontweight="bold", ha="center")
 
-    # Separate according to diabetes
-    sdfs = [v for k, v in sdf.groupby('diab')]
 
-    # Run t-test
-    tval, pval = stats.ttest_ind(sdfs[0]["slope"], sdfs[1]["slope"], equal_var=False)
+# Format
+# ----
 
-    # Show results
-    p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
-    text = \
-           f"Feature: {feat}\n" \
-           f"T={tval:.1f}\n{pformat(pval)}" \
-           f"{p2star(pval)}\n" \
-           f"$\mathbf{{N_{{T2DM}}}}$={ss[0]}\n" \
-           f"$\mathbf{{N_{{ctrl}}}}$={ss[1]}\n" \
-           f"Percentage: {perc:.2f}"
+# Title
+ttl = plt.title("Cognitive performance across age and T2DM disease duration:\n" \
+          f"UK Biobank dataset\n"
+          f"N$_{{≥10 years}}$={int(gdf.shape[0]/3)}, " \
+          f"N$_{{0-9 years}}$={int(gdf.shape[0]/3)}, " \
+          f"N$_{{HC}}$={int(gdf.shape[0]/3)}\n"
+          )
+ttl.set_x(ttl.get_position()[0]-0.056)
 
-    print(text)
+plt.xlabel("Age group (year)")
+#plt.ylabel("Gray matter cognition delineated\nbrain age (y)")
+
+plt.ylabel("Standardized cognitive performance score")
+
+legend_handles, _ = plt.gca().get_legend_handles_labels()
+[ha.set_linewidth(5) for ha in legend_handles]
+
+plt.legend(title="T2DM disease duration",
+           handles=legend_handles[::-1],
+           labels=["≥10 years", "0-9 years", "HC"],
+           loc=1)
+
+plt.gca().xaxis.tick_bottom()
+plt.gca().yaxis.tick_left()
+
+for sp in ['bottom', 'top', 'left', 'right']:
+    plt.gca().spines[sp].set_linewidth(0.5*lw)
+    plt.gca().spines[sp].set_color("black")
+
+plt.gca().xaxis.grid(False)
+plt.tight_layout()
+
+# Save
+# ----
+
+plt.tight_layout(rect=[0, 0., 1, 0.99])
+plt.savefig(OUTDIR + "figures/JAMA_meta_figure_cognition_acceleration.pdf",
+            transparent=True)
+plt.close("all")
+

@@ -43,7 +43,9 @@ OUTDIR = HOMEDIR + "results/cognition/"
 CTRS = "diab"  # Contrast: diab or age
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
-RLD = True  # Reload regressor matrices instead of computing them again
+RLD = 1 # Reload regressor matrices instead of computing them again
+
+print("\nRELOADING REGRESSORS!\n") if RLD else ...
 
 #raise
 
@@ -93,14 +95,6 @@ diab = pd.read_csv(SRCDIR + "ivs/diab.csv", index_col=0)[["eid", "diab-2"]] \
 # College
 college = pd.read_csv(SRCDIR + "ivs/college.csv", index_col=0)[["eid", "college"]] \
 
-# Ses
-ses = pd.read_csv(SRCDIR + "ivs/ses.csv", index_col=0)[["eid", "ses"]]
-
-# BMI
-bmi = pd.read_csv(SRCDIR + "ivs/bmi.csv", index_col=0)[["eid", "bmi-2"]] \
-    .rename({"bmi-2": "bmi"}, axis=1) \
-    .dropna(how="any")
-
 # Age of diabetes diagnosis (rough estimate!, averaged)
 age_onset = pd \
     .read_csv(SRCDIR + "ivs/age_onset.csv", index_col=0) \
@@ -127,10 +121,13 @@ print(f"Building regressor matrices with contrast [{CTRS}].")
 # Choose variables
 regressors = functools.reduce(
         lambda left, right: pd.merge(left, right, on="eid", how="inner"),
-        [diab, age, sex, college, ses, bmi, age_onset]
+        [diab, age, sex, college, age_onset]
         ) \
         .drop("age_onset", axis=1)
 
+# Sample sizes
+#regressors.merge(data, on="eid").set_index(list(regressors.columns)) \
+#        .pipe(lambda df: df[df>=0]).dropna(how="all").mean(axis=1).groupby("diab").count()
 
 # If contrast is age
 if CTRS == "age":
@@ -168,8 +165,6 @@ for i, feat in enumerate(features):
         var_dict = {
                 "sex": "disc",
                 "college": "disc",
-                "ses": "disc",
-                "bmi": "cont"
                 }
 
         for name, type_ in var_dict.items():
@@ -193,8 +188,6 @@ for i, feat in enumerate(features):
                 "age": "cont",
                 "sex": "disc",
                 "college": "disc",
-                "ses": "disc",
-                "bmi": "cont"
                 }
 
         for name, type_ in var_dict.items():
@@ -221,7 +214,7 @@ for i, feat in enumerate(features):
                 main_var="age",
                 vars_to_match=["sex", "college"],
                 N=1,
-                random_state=1
+                random_state=100
                 )
 
     if (CTRS == "diab") & (RLD == False):
@@ -232,7 +225,7 @@ for i, feat in enumerate(features):
                 main_var="diab",
                 vars_to_match=["age", "sex", "college"],
                 N=1,
-                random_state=1
+                random_state=100
                 )
 
     # Save matched regressors matrix
@@ -277,9 +270,9 @@ for i, feat in enumerate(features):
     # -------
     # Formula
     if CTRS == "age":
-        formula = f"{feat} ~ age + C(sex) + C(college) + C(ses) + bmi"
+        formula = f"{feat} ~ age + C(sex) + C(college)"
     if CTRS == "diab":
-        formula = f"{feat} ~ C(diab) + age + C(sex) + C(college) + C(ses) + bmi"
+        formula = f"{feat} ~ C(diab) + age + C(sex) + C(college)"
 
     # Fit model
     model = smf.ols(formula, data=sdf)

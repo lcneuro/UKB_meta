@@ -70,8 +70,8 @@ VOLUME = 1000  # Cluster volume, mm3
 VOXEL_DIM = 2.4  # Voxel dimension in work space, assuming cubic voxels, mm
 
 regressors_dict = {
-    "diab": ["subject_label", "diab", "age", "sex", "college", "bmi", "ses"],
-    "age": ["subject_label", "age", "sex", "college", "bmi", "ses"],
+    "diab": ["subject_label", "diab", "age", "sex", "college"],
+    "age": ["subject_label", "age", "sex", "college"],
     }
 
 print("Settings:\n" \
@@ -109,14 +109,6 @@ diab = pd.read_csv(SRCDIR + "ivs/diab.csv", index_col=0)[["eid", "diab-2"]] \
 
 # College
 college = pd.read_csv(SRCDIR + "ivs/college.csv", index_col=0)[["eid", "college"]] \
-
-# Ses
-ses = pd.read_csv(SRCDIR + "ivs/ses.csv", index_col=0)[["eid", "ses"]]
-
-# BMI
-bmi = pd.read_csv(SRCDIR + "ivs/bmi.csv", index_col=0)[["eid", "bmi-2"]] \
-    .rename({"bmi-2": "bmi"}, axis=1) \
-    .dropna(how="any")
 
 # Age of diabetes diagnosis (rough estimate!, averaged)
 age_onset = pd \
@@ -163,7 +155,7 @@ gm_mask = image.resample_img(
 # Choose variables
 regressors = functools.reduce(
         lambda left, right: pd.merge(left, right, on="eid", how="inner"),
-        [diab, age, sex, college, ses, bmi, age_onset]
+        [diab, age, sex, college, age_onset]
         ) \
         .drop("age_onset", axis=1)
 
@@ -187,8 +179,6 @@ if CTRS == "age":
     var_dict = {
             "sex": "disc",
             "college": "disc",
-            "ses": "disc",
-            "bmi": "cont"
             }
 
     for name, type_ in var_dict.items():
@@ -222,8 +212,6 @@ if CTRS == "diab":
             "age": "cont",
             "sex": "disc",
             "college": "disc",
-            "ses": "disc",
-            "bmi": "cont"
             }
 
     for name, type_ in var_dict.items():
@@ -500,9 +488,9 @@ for label in clusters["label"]:
 
     # Formula
     if CTRS == "age":
-        formula = f"{label} ~ age + C(sex) + C(college) + C(ses) + bmi"
+        formula = f"{label} ~ age + C(sex) + C(college)"
     if CTRS == "diab":
-        formula = f"{label} ~ C(diab) + age + C(sex) + C(college) + C(ses) + bmi"
+        formula = f"{label} ~ C(diab) + age + C(sex) + C(college)"
 
     # Construct OLS model
     model = smf.ols(formula, data=df)

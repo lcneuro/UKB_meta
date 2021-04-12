@@ -31,24 +31,24 @@ OUTDIR = HOMEDIR + "results/med/cognition/"
 
 # Inputs
 CTRS = "metfonly_unmed"
-CTRS_label = "Metformin only (T2DM+) vs unmedicated (T2DM+)"
+CTRS_label = "Metformin only (T2DM+) vs.\nunmedicated (T2DM+)"
 
 # Case specific values
 cases = [CTRS]
 titles = [
         "Domain specific cognitive performance\n" \
-        f"({CTRS_label},\nage, education, sex and disease duration matched)\n"
+        f"({CTRS_label})"
         ]
 ylabeltexts = [
-        f"Percentage difference in task performance\n{CTRS_label} (% of avg)",
+        f"Percentage difference in cognitive\nperformance (% of avg)",
         ]
-colors = ["coolwarm"]
-ylims = [[-30, 10]]
-sfs = [1e2]  # Marker size factors
-sfscf = [500]  # Marker size scale factors
-sdxo = [0.99]  # x axis offset of scale info
+colors = ["PRGn"]
+ylims = [[-25, 15]]
+sfs = [3e2]  # Marker size factors
+sfscf = [800]  # Marker size scale factors
+sdxo = [1.35]  # x axis offset of scale info
 textpads = [0.1]  # Padding for text along y axis
-xtickrots = [0]  # Rotation of xticks
+xtickrots = [45]  # Rotation of xticks
 xtickvas = ["top"]  # Vertical alignment for xticks
 xtickpads = [0]  # Paddong fo xticks
 
@@ -99,7 +99,7 @@ for case in cases:
 # Figure
 # =============================================================================
 
-f = plt.figure(figsize=(3.75, 5.5))
+f = plt.figure(figsize=(3, 8))
 plt.suptitle("")
 
 # Panels A & B
@@ -194,7 +194,7 @@ for c, case in enumerate(cases):
     plt.gca().yaxis.tick_left()
 
     for sp in ['bottom', 'top', 'left', 'right']:
-        plt.gca().spines[sp].set_linewidth(0.5*lw)
+        plt.gca().spines[sp].set_linewidth(0.75*lw)
         plt.gca().spines[sp].set_color("black")
 
     plt.gca().xaxis.grid(False)
@@ -202,14 +202,14 @@ for c, case in enumerate(cases):
     plt.gca().set_axisbelow(True)
 
     # Add arrow representing directionality
-    plt.gca().annotate("improvement",
-                xy=(0.02, 0.95), xycoords='axes fraction',
-                xytext=(0.02, 0.5), textcoords='axes fraction',
+    plt.gca().annotate("Improvement",
+                xy=(0.04, 0.8), xycoords='axes fraction',
+                xytext=(0.04, 0.3), textcoords='axes fraction',
                 arrowprops=dict(arrowstyle="fancy, head_width=1, head_length=2",
                                 connectionstyle="arc3",
-                                facecolor='salmon',
-                                linewidth=0.2),
-                va="center", ha="center", fontsize=6, rotation=90
+                                facecolor='k',
+                                linewidth=.2),
+                va="center", ha="center", fontsize=7, rotation=90
                 )
 
     # Add scale

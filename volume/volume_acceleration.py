@@ -40,9 +40,9 @@ T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
 DUR_CO = 10  # Year to separate subjects along duration <x, >=x
 PARC = 46  # Type of parcellation to use, options: 46 or 139
-excl_sub = [] # [1653701, 3361084, 3828231, 2010790, 2925838, 3846337,]  # Subjects
-## to exlucde due to abnormal total gray matter volumes
-RLD = True # Reload regressor matrices instead of computing them again
+RLD = 1 # Reload regressor matrices instead of computing them again
+
+print("\nRELOADING REGRESSORS!\n") if RLD else ...
 
 #raise
 
@@ -88,14 +88,6 @@ diab = pd.read_csv(SRCDIR + "ivs/diab.csv", index_col=0)[["eid", "diab-2"]] \
 # College
 college = pd.read_csv(SRCDIR + "ivs/college.csv", index_col=0)[["eid", "college"]] \
 
-# Ses
-ses = pd.read_csv(SRCDIR + "ivs/ses.csv", index_col=0)[["eid", "ses"]]
-
-# BMI
-bmi = pd.read_csv(SRCDIR + "ivs/bmi.csv", index_col=0)[["eid", "bmi-2"]] \
-    .rename({"bmi-2": "bmi"}, axis=1) \
-    .dropna(how="any")
-
 # Age of diabetes diagnosis (rough estimate!, averaged)
 age_onset = pd \
     .read_csv(SRCDIR + "ivs/age_onset.csv", index_col=0) \
@@ -131,7 +123,7 @@ print(f"Building regressor matrix with contrast [{CTRS}]")
 # Choose variables and group per duration
 regressors = functools.reduce(
         lambda left, right: pd.merge(left, right, on="eid", how="inner"),
-        [age, sex, college, ses, bmi, diab, age_onset]
+        [age, sex, college, diab, age_onset]
         ) \
         .drop("age_onset", axis=1) \
         .merge(duration, on="eid", how="left") \
@@ -153,46 +145,46 @@ regressors_y = y.merge(regressors, on="eid", how="inner")
 regressors_clean = regressors_y.drop(["feat"], axis=1)
 
 # Save full regressor matrix
-regressors_clean.to_csv(OUTDIR + f"regressors/pub_meta_volume_full_regressors_{CTRS}.csv")
+regressors_clean.to_csv(OUTDIR + f"regressors/pub_meta_volume_acceleration_full_regressors_{CTRS}.csv")
 
 # Interactions among independent variables
 var_dict = {
         "age": "cont",
         "sex": "disc",
         "college": "disc",
-        "ses": "disc",
-        "bmi": "cont",
         }
 
 for name, type_ in var_dict.items():
 
-    check_covariance(
-            regressors_clean.query(f'{CTRS} == {CTRS}'),
-            var1=CTRS,
-            var2=name,
-            type1="cont",
-            type2=type_,
-            save=True,
-            prefix=OUTDIR + "covariance/pub_meta_volume_covar"
-            )
+    if RLD == False:
 
-    plt.close("all")
+        check_covariance(
+                regressors_clean.query(f'{CTRS} == {CTRS}'),
+                var1=CTRS,
+                var2=name,
+                type1="cont",
+                type2=type_,
+                save=True,
+                prefix=OUTDIR + "covariance/pub_meta_volume_acceleration_covar"
+                )
 
-if RLD == False:
-    # Match
-    regressors_matched = match_multi(
-            df=regressors_clean,
-            main_var="duration_group",
-            vars_to_match=["age", "sex", "college"],
-            N=1,
-            random_state=1
-            )
+        plt.close("all")
+
+
+        # Match
+        regressors_matched = match_multi(
+                df=regressors_clean,
+                main_var="duration_group",
+                vars_to_match=["age", "sex", "college"],
+                N=1,
+                random_state=100
+                )
 
 if RLD == False:
     # Save matched regressors matrix
     regressors_matched \
         .reset_index(drop=True) \
-        .to_csv(OUTDIR + f"regressors/pub_meta_volume_matched_regressors_{CTRS}.csv")
+        .to_csv(OUTDIR + f"regressors/pub_meta_volume_acceleration_matched_regressors_{CTRS}.csv")
 
 # %%
 # =============================================================================
@@ -203,7 +195,7 @@ if RLD == False:
 # ------
 # Get regressors
 regressors_matched = pd.read_csv(
-        OUTDIR + f"regressors/pub_meta_volume_matched_regressors_{CTRS}.csv",
+        OUTDIR + f"regressors/pub_meta_volume_acceleration_matched_regressors_{CTRS}.csv",
         index_col=0)
 
 # Join regressors with data
@@ -219,7 +211,7 @@ sdf = df.query('diab == 1')
 feat = "Whole_Brain"
 
 # Fit the model to get brain age
-model = smf.ols(f"{feat} ~ age + C(sex) + C(college) + C(ses) + bmi + duration", data=sdf)
+model = smf.ols(f"{feat} ~ age + C(sex) + C(college) + duration", data=sdf)
 results = model.fit()
 
 # Monitor
@@ -228,7 +220,7 @@ results = model.fit()
 #print(results.summary())
 
 # Save detailed stats report
-with open(OUTDIR + f"stats_misc/pub_meta_volume_regression_table_{feat}" \
+with open(OUTDIR + f"stats_misc/pub_meta_volume_acceleration_regression_table_{feat}" \
           f"_{CTRS}.html", "w") as f:
     f.write(results.summary().as_html())
 
@@ -237,8 +229,19 @@ check_assumptions(
         results,
         sdf,
         prefix=OUTDIR + \
-        f"stats_misc/pub_meta_volume_stats_assumptions_{feat}_{CTRS}"
+        f"stats_misc/pub_meta_volume_acceleration_stats_assumptions_{feat}_{CTRS}"
         )
+
+# Results
+# -------
+
+# Calculate acceleration of aging in additional year/year
+acc_res = results.params["duration"]/results.params["age"]
+
+print(f"Acceleration: +{acc_res:.2g} year/year", f'p={results.pvalues["duration"]:.2g},', \
+      "significant" if results.pvalues["duration"]<0.05 else "not significant!")
+
+
 
 # %%
 # =============================================================================
@@ -269,13 +272,13 @@ gdf = gdf.sort_values(by=["age", "duration"], na_position="first")
 print("Sampe sizes, age info:\n", gdf.groupby(['duration_group', 'age_group'])["age"].describe())
 
 # Colors
-palette = sns.color_palette(["black", "tomato", "darkred"])
+palette = sns.color_palette(["black", "darkorange", "red"])
 
 # Content
 # -----
 
 # Make figure
-plt.figure(figsize=(4.25, 5.5))
+plt.figure(figsize=(5, 4))
 
 # Create plot
 sns.lineplot(data=gdf, x="age_group", y=feat,
@@ -287,13 +290,13 @@ sns.lineplot(data=gdf, x="age_group", y=feat,
 
 # Annotate stats
 tval, pval = results.tvalues["duration"], results.pvalues["duration"]
-text = f"Time since T2DM diagnosis\nas a continuous linear factor:\n" \
+text = f"T2DM disease duration\nas a continuous linear factor:\n" \
        f"$\mathbf{{H_0}}$:  $\mathrm{{\\beta}}$$\mathbf{{_t}}$ = 0\n" \
        f"$\mathbf{{H_1}}$:  $\mathrm{{\\beta}}$$\mathbf{{_t}}$ ≠ 0\n" \
        f"T = {tval:.1f}\n{pformat(pval)}" \
        f"{p2star(pval)}"
 
-plt.annotate(text, xycoords="axes fraction", xy=[0.279, 0.03],
+plt.annotate(text, xycoords="axes fraction", xy=[0.23, 0.03],
              fontsize=8*fs, fontweight="bold", ha="center")
 
 
@@ -302,7 +305,7 @@ plt.annotate(text, xycoords="axes fraction", xy=[0.279, 0.03],
 
 # Title
 ttl = plt.title("Gray matter atrophy across age and T2DM disease duration:\n" \
-          f"UK Biobank dataset (age, education and sex-matched)\n"
+          f"UK Biobank dataset \n"
           f"N$_{{≥10 years}}$={int(gdf.shape[0]/3)}, " \
           f"N$_{{0-9 years}}$={int(gdf.shape[0]/3)}, " \
           f"N$_{{HC}}$={int(gdf.shape[0]/3)}\n"
@@ -321,7 +324,7 @@ plt.annotate("×10$^5$", xy=[0, 1.03], xycoords="axes fraction",
 legend_handles, _ = plt.gca().get_legend_handles_labels()
 [ha.set_linewidth(5) for ha in legend_handles]
 
-plt.legend(title="    Time Since\nT2DM Diagnosis",
+plt.legend(title="T2DM disease duration",
            handles=legend_handles[::-1],
            labels=["≥10 years", "0-9 years", "HC"],
            loc=1)
@@ -330,7 +333,7 @@ plt.gca().xaxis.tick_bottom()
 plt.gca().yaxis.tick_left()
 
 for sp in ['bottom', 'top', 'left', 'right']:
-    plt.gca().spines[sp].set_linewidth(0.5*lw)
+    plt.gca().spines[sp].set_linewidth(0.75*lw)
     plt.gca().spines[sp].set_color("black")
 
 plt.gca().xaxis.grid(False)

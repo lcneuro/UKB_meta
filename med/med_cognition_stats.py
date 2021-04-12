@@ -96,9 +96,6 @@ diab = pd.read_csv(SRCDIR + "ivs/diab.csv", index_col=0)[["eid", "diab-2"]] \
 # College
 college = pd.read_csv(SRCDIR + "ivs/college.csv", index_col=0)[["eid", "college"]] \
 
-# Ses
-ses = pd.read_csv(SRCDIR + "ivs/ses.csv", index_col=0)[["eid", "ses"]]
-
 # BMI
 bmi = pd.read_csv(SRCDIR + "ivs/bmi.csv", index_col=0)[["eid", "bmi-2"]] \
     .rename({"bmi-2": "bmi"}, axis=1) \
@@ -141,7 +138,7 @@ print(f"Building regressor matrices with contrast [{CTRS}].")
 # Choose variables
 regressors = functools.reduce(
         lambda left, right: pd.merge(left, right, on="eid", how="inner"),
-        [age, sex, college, ses, bmi, med, duration]
+        [age, sex, college, bmi, med, duration]
         )
 
 # Assign labels to features
@@ -189,7 +186,6 @@ for i, feat in enumerate(features):
             "age": "cont",
             "sex": "disc",
             "college": "disc",
-            "ses": "disc",
             "bmi": "cont",
             "duration": "cont"
             }
@@ -261,7 +257,7 @@ for i, feat in enumerate(features):
     # Regression
     # -------
     # Formula
-    formula = f"{feat} ~ age + C(sex) + C(college) + C(ses) + bmi + duration + {CTRS}"
+    formula = f"{feat} ~ age + C(sex) + C(college) + bmi + duration + {CTRS}"
 
     # Fit model
     model = smf.ols(formula, data=sdf)

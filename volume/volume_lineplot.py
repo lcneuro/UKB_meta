@@ -38,7 +38,9 @@ OUTDIR = HOMEDIR + "results/volume/"
 CTRS = "diab"  # Contrast: diab or age
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
-RLD = True
+RLD = 1
+
+print("\nRELOADING REGRESSORS!\n") if RLD else ...
 
 #raise
 
@@ -72,14 +74,6 @@ diab = pd.read_csv(SRCDIR + "ivs/diab.csv", index_col=0)[["eid", "diab-2"]] \
 # College
 college = pd.read_csv(SRCDIR + "ivs/college.csv", index_col=0)[["eid", "college"]] \
 
-# Ses
-ses = pd.read_csv(SRCDIR + "ivs/ses.csv", index_col=0)[["eid", "ses"]]
-
-# BMI
-bmi = pd.read_csv(SRCDIR + "ivs/bmi.csv", index_col=0)[["eid", "bmi-2"]] \
-    .rename({"bmi-2": "bmi"}, axis=1) \
-    .dropna(how="any")
-
 # Age of diabetes diagnosis (rough estimate!, averaged)
 age_onset = pd \
     .read_csv(SRCDIR + "ivs/age_onset.csv", index_col=0) \
@@ -107,7 +101,7 @@ print("Transforming.")
 # Choose variables and group per duration
 regressors = functools.reduce(
         lambda left, right: pd.merge(left, right, on="eid", how="inner"),
-        [age, sex, college, ses, bmi, diab, age_onset]
+        [age, sex, college, diab, age_onset]
         ) \
         .drop("age_onset", axis=1) \
 
@@ -132,34 +126,31 @@ if RLD == False:
 if RLD == False:
     regressors_matched \
         .reset_index(drop=True) \
-        .to_csv(OUTDIR + "regressors/pub_meta_volume_combined_matched_" \
+        .to_csv(OUTDIR + "regressors/pub_meta_volume_lineplot_matched_" \
                 f"regressors_{CTRS}.csv")
+
+
+# =============================================================================
+# Statistics
+# =============================================================================
 
 # Get regressors
 regressors_matched = pd.read_csv(
-        OUTDIR + f"regressors/pub_meta_volume_combined_matched_regressors_" \
+        OUTDIR + f"regressors/pub_meta_volume_lineplot_matched_regressors_" \
         f"{CTRS}.csv",
         index_col=0)
 
-# Linear regression
+# Merge regressors with data
 df = regressors_matched \
     .merge(data, on="eid") \
 
-model = smf.ols(f"volume ~ diab + age + C(sex) + C(college) + C(ses) + bmi", data=df)
+# Linear regression
+model = smf.ols(f"volume ~ diab + age + C(sex) + C(college)", data=df)
 results = model.fit()
 print(results.summary())
 
-
-# Merge and standardize
-df = regressors_matched \
-    .merge(data, on="eid") \
-    .pipe(lambda df: df.assign(**{"age_group":
-            pd.cut(df["age"], bins=np.arange(0, 100, 5)).astype(str)
-            })) \
-    .sort_values(by="age") \
-    .query('age_group not in ["(40, 45]"]') \
-    .query('age_group not in ["(40, 45]", "(45, 50]"]') \
-#    .query('age_group not in ["(40, 45]", "(45, 50]", "(75, 80]"]')
+# Estimated age gap between the two cohorts
+print(f'Estimated age gap: {results.params["diab"]/results.params["age"]:.2f}, years.')
 
 # %%
 # =============================================================================
@@ -171,10 +162,23 @@ print(f"Plotting.")
 
 # Prep
 # -----
+
 # Unpack plotting utils
 fs, lw = plot_pars
 p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
-lw = lw*1.5
+lw = lw*1
+
+# Graphing df with age groups
+gdf = regressors_matched \
+    .merge(data, on="eid") \
+    .pipe(lambda df: df.assign(**{"age_group":
+            pd.cut(df["age"], bins=np.arange(0, 100, 5)).astype(str)
+            })) \
+    .sort_values(by="age") \
+    .query('age_group not in ["(40, 45]"]') \
+    .query('age_group not in ["(40, 45]", "(45, 50]"]') \
+#    .query('age_group not in ["(40, 45]", "(45, 50]", "(75, 80]"]')
+
 
 # Sample sizes
 ss = regressors_matched.groupby(["diab"])["eid"].count().to_list()
@@ -186,10 +190,10 @@ palette = sns.color_palette(["black", "red"])
 # -----
 
 # Make figure
-plt.figure(figsize=(4.25, 5.5))
+plt.figure(figsize=(3.625, 5))
 
 # Create plot
-sns.lineplot(data=df, x="age_group", y="volume",
+sns.lineplot(data=gdf, x="age_group", y="volume",
          hue="diab", ci=68, err_style="bars",
          marker="o", linewidth=1*lw, markersize=3*lw, err_kws={"capsize": 2*lw,
                                                          "capthick": 1*lw,
@@ -200,9 +204,9 @@ sns.lineplot(data=df, x="age_group", y="volume",
 # ----
 
 # Title
-plt.title("Gray matter volume across age and T2DM status:\n" \
-          f"(age, education and sex-matched)\nN$_{{T2DM+}}$={ss[1]:,}, " \
-          f"N$_{{HC}}$={ss[0]:,}")
+plt.title("Gray matter volume across age\nand T2DM status\n" \
+          f"N$_{{T2DM+}}$={ss[1]:,}, " \
+          f"N$_{{HC}}$={ss[0]:,}\n", x=0.42)
 
 plt.xlabel("Age group (year)")
 #plt.ylabel("Gray matter volume delineated\nbrain age (y)")
@@ -222,15 +226,16 @@ plt.legend(handles=legend_handles[::-1],
 
 plt.gca().xaxis.tick_bottom()
 plt.gca().yaxis.tick_left()
+plt.xticks(rotation=45)
 
 for sp in ['bottom', 'top', 'left', 'right']:
-    plt.gca().spines[sp].set_linewidth(2)
+    plt.gca().spines[sp].set_linewidth(0.75*lw)
     plt.gca().spines[sp].set_color("black")
 
 # Annotate stats
 tval, pval = results.tvalues["diab"], results.pvalues["diab"]
 text = f"T2DM+ vs HC:\nT={tval:.1f}, {pformat(pval)}{p2star(pval)}"
-plt.annotate(text, xycoords="axes fraction", xy=[0.279, 0.1],
+plt.annotate(text, xycoords="axes fraction", xy=[0.40, 0.08],
              fontsize=8*fs, fontweight="bold", ha="center")
 
 plt.gca().yaxis.grid(True)

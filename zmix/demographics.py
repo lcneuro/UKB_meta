@@ -194,9 +194,9 @@ THR = 20
 # Transform
 dataobj = PrepDf() \
     .import_data(feats=["age", "diab", "sex", "college",
-                        "age_onset", "bmi", "ses"]) \
-    .select_cols(visit_spec=["age", "diab", "bmi"],
-                 single=["college", "sex", "ses"], multi=["age_onset"], visit=2) \
+                        "age_onset"]) \
+    .select_cols(visit_spec=["age", "diab"],
+                 single=["college", "sex"], multi=["age_onset"], visit=2) \
     .rename_cols() \
     .calc_age_onset() \
     .comp_duration() \

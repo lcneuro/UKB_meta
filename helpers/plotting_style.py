@@ -27,13 +27,13 @@ plt.rcParams['xtick.major.size'] = 6
 plt.rcParams['xtick.major.width'] = 0.5*lw
 plt.rcParams['ytick.major.size'] = 6
 plt.rcParams['ytick.major.width'] = 0.5*lw
-plt.rcParams['xtick.labelsize']=6*fs
-plt.rcParams['ytick.labelsize']=6*fs
+plt.rcParams['xtick.labelsize']=8*fs
+plt.rcParams['ytick.labelsize']=8*fs
 plt.rcParams['text.color'] = "black"
 plt.rcParams['axes.labelcolor'] = "black"
 plt.rcParams["font.weight"] = "bold"
 plt.rcParams["font.family"] = "DejaVu Sans"
-plt.rcParams["font.size"] = 7*fs
+plt.rcParams["font.size"] = 8*fs
 plt.rcParams['axes.labelsize']=8*fs
 plt.rcParams['axes.labelweight'] = "bold"
 plt.rcParams['lines.linewidth'] = 3
@@ -121,13 +121,13 @@ def pformat(p):
 #        return "$\it{P}$=" + f"{p:.2g}"
 
     if p > 0.995:
-        return "$\it{P}$=1.00"
+        return "$\it{p}$=1.00"
     elif p >= 0.01:
-        return "$\it{P}$=" + f"{p:.2f}" # [1:]
+        return "$\it{p}$=" + f"{p:.2f}" # [1:]
     elif p >= 0.001:
-        return "$\it{P}$=" + f"{p:.3f}" # [1:]
+        return "$\it{p}$=" + f"{p:.3f}" # [1:]
     elif p < 0.001:
-        return "$\it{P}$<0.001"
+        return "$\it{p}$<0.001"
     else:
         "INVALID!"
 

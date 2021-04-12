@@ -104,7 +104,7 @@ colors_t2 = colors_from_values(
 
 colors_age = colors_from_values(
         np.array(list(-ag["beta"]) + [ag["beta"].min() + 0, ag["beta"].max()]),
-        "PuOr")[:-2]
+        "PiYG")[:-2]
 
 colors = np.concatenate((colors_age, colors_t2), axis=0)
 
@@ -114,11 +114,11 @@ colors_dict = {i: colors[i] for i in range(len(colors))}
 df["label"] = df["label"].str.replace("_", " ")
 
 # Plotting
-f = sns.FacetGrid(data=df, col="contrast", height=5.5, aspect=0.77,
+f = sns.FacetGrid(data=df, col="contrast", height=7.25, aspect=1,
                   sharex=False, despine=False) \
     .map_dataframe(sns.barplot, y="label", x="beta",
                    palette=colors_dict, hue="index", dodge=False,
-                   linewidth=lw*0.25, edgecolor="black",
+                   linewidth=lw*0.5, edgecolor="black",
                    zorder=3, orient="h")
 
 # Formatting
@@ -130,8 +130,8 @@ f = sns.FacetGrid(data=df, col="contrast", height=5.5, aspect=0.77,
 # Axis titles
 ss = [t2["sample_sizes"][0], ag["sample_sizes"][0]]
 title_texts = [
-        f"Age (HC only, education and sex-matched)\nN$_{{}}$={ss[1][0]:,}",
-        f"T2DM (T2DM+ vs. HC,\nage, education and sex-matched)\nN$_{{T2DM+}}$={ss[0][1]:,}, " \
+        f"Age (HC only)\nN$_{{}}$={ss[1][0]:,}",
+        f"T2DM (T2DM+ vs. HC)\nN$_{{T2DM+}}$={ss[0][1]:,}, " \
         f"N$_{{HC}}$={ss[0][0]:,}"
         ]
 
@@ -149,7 +149,7 @@ for i, ax in enumerate(f.axes[0]):
     ax.grid(zorder=0, linewidth=0.25*lw)
 
     # Add x=0 axvline
-    ax.axvline(x=0, linewidth=0.5*lw, color="black")
+    ax.axvline(x=0, linewidth=0.75*lw, color="black")
 
     # Add in errobars
     for _, item in tqdm(enumerate(sub_df.iterrows()), total=len(sub_df)):
@@ -159,8 +159,8 @@ for i, ax in enumerate(f.axes[0]):
 
         conf_dist = abs(x - np.array(conf_int))[:, None]
 
-        ax.errorbar(x, y, xerr=conf_dist, capsize=0.7*lw, capthick=lw*0.25,
-                     elinewidth=lw*0.25, color="black", zorder=100)
+        ax.errorbar(x, y, xerr=conf_dist, capsize=1.2*lw, capthick=lw*0.5,
+                     elinewidth=lw*0.5, color="black", zorder=100)
 
     #    text = pformat(p) + p2star(p ) if PRINT_P \
     #            else p2star(p)
@@ -187,7 +187,7 @@ for i, ax in enumerate(f.axes[0]):
 
     # Add spines
     for sp in ['bottom', 'top', 'right', 'left']:
-        ax.spines[sp].set_linewidth(0.5*lw)
+        ax.spines[sp].set_linewidth(0.75*lw)
         ax.spines[sp].set_color("black")
 
 
@@ -197,21 +197,24 @@ for i, ax in enumerate(f.axes[0]):
 # Age
 # -----
 ax = f.axes[0][0]
-ax.set_xlim([-1.19, 0.59])
+ax.set_xlim([-1.3, 0.65])
 ax.spines['right'].set_visible(False)
-ax.set_xlabel("Percentage change in gray matter volume\nacross age (% per year)")
+ax.set_xlabel("Percentage change in\ngray matter volume\nacross age (% per year)")
 
 # T2DM
 # ----
 ax = f.axes[0][1]
-ax.set_xlim([-8.1, 5.3])
-ax.set_xlabel("Percentage difference in gray matter volume\nT2DM+ vs. HC (%)")
+ax.set_xlim([-9, 5])
+ax.set_xlabel("Percentage difference in\ngray matter volume\nT2DM+ vs. HC (%)")
 
 # Figure formatting
 # ------
 
+# Set figure size
+plt.gcf().set_size_inches(7.25, 9)
+
 # Add common suptitle
-plt.suptitle("\t\t\t" + "Region specific gray matter volume changes associated with age and T2DM: " \
+plt.suptitle("\t\t\t" + "Region specific gray matter volume changes\n associated with age and T2DM: " \
              "UK Biobank dataset", va="top", y=0.985)
 
 ## Add common x label
@@ -219,7 +222,7 @@ plt.suptitle("\t\t\t" + "Region specific gray matter volume changes associated w
 #        fontsize=14*fs, fontweight="bold")
 
 
-plt.tight_layout(rect=[0, 0.00, 1, 1.03])
+plt.tight_layout(rect=[0, 0.00, 1, 0.995])
 plt.savefig(OUTDIR + "figures/JAMA_meta_figure_volume.pdf",
             transparent=True)
 plt.close("all")

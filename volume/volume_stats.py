@@ -42,13 +42,15 @@ SRCDIR = HOMEDIR + "data/"
 OUTDIR = HOMEDIR + "results/volume/"
 
 # Inputs
-CTRS = "age"  # Contrast: diab or age
+CTRS = "diab"  # Contrast: diab or age
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
 PARC = 46  # Type of parcellation to use, options: 46 or 139
 ## to exlucde due to abnormal total gray matter volumes
 excl_region = ["Pallidum"]  # Regions to exclude
 RLD = False  # Reload regressor matrices instead of computing them again
+
+print("\nRELOADING REGRESSORS!\n") if RLD else ...
 
 #raise
 
@@ -94,14 +96,6 @@ diab = pd.read_csv(SRCDIR + "ivs/diab.csv", index_col=0)[["eid", "diab-2"]] \
 # College
 college = pd.read_csv(SRCDIR + "ivs/college.csv", index_col=0)[["eid", "college"]] \
 
-# Ses
-ses = pd.read_csv(SRCDIR + "ivs/ses.csv", index_col=0)[["eid", "ses"]]
-
-# BMI
-bmi = pd.read_csv(SRCDIR + "ivs/bmi.csv", index_col=0)[["eid", "bmi-2"]] \
-    .rename({"bmi-2": "bmi"}, axis=1) \
-    .dropna(how="any")
-
 # Age of diabetes diagnosis (rough estimate!, averaged)
 age_onset = pd \
     .read_csv(SRCDIR + "ivs/age_onset.csv", index_col=0) \
@@ -128,7 +122,7 @@ print(f"Building regressor matrix with contrast [{CTRS}]")
 # Choose variables
 regressors = functools.reduce(
         lambda left, right: pd.merge(left, right, on="eid", how="inner"),
-        [diab, age, sex, college, ses, bmi, age_onset]
+        [diab, age, sex, college, age_onset]
         ) \
         .drop("age_onset", axis=1)
 
@@ -144,7 +138,7 @@ regressors_y = y.merge(regressors, on="eid", how="inner")
 ## Fit model
 #sdf = regressors_y
 
-#model = smf.ols(f"feat ~ C(diab) + age + C(sex) + C(college) + C(ses) + bmi", data=sdf)
+#model = smf.ols(f"feat ~ C(diab) + age + C(sex) + C(college)", data=sdf)
 #results = model.fit()
 #
 ## Print results
@@ -165,8 +159,6 @@ if CTRS == "age":
     var_dict = {
             "sex": "disc",
             "college": "disc",
-            "ses": "disc",
-            "bmi": "cont"
             }
 
     for name, type_ in var_dict.items():
@@ -200,8 +192,6 @@ if CTRS == "diab":
             "age": "cont",
             "sex": "disc",
             "college": "disc",
-            "ses": "disc",
-            "bmi": "cont"
             }
 
     for name, type_ in var_dict.items():
@@ -331,7 +321,7 @@ for i, feat in tqdm(enumerate(features), total=len(features), desc="Models fitte
     # Prep
     # ----
     # Extract current feature
-    sdf = df[["eid", "age", "diab", "sex", "college", "ses", "bmi", f"{feat}"]]
+    sdf = df[["eid", "age", "diab", "sex", "college", f"{feat}"]]
 
     # Get sample sizes
     sample_sizes = sdf.groupby("diab")["eid"].count()
@@ -340,9 +330,9 @@ for i, feat in tqdm(enumerate(features), total=len(features), desc="Models fitte
     # -----
     # Formula
     if CTRS == "age":
-        formula = f"{feat} ~ age + C(sex) + C(college) + C(ses) + bmi"
+        formula = f"{feat} ~ age + C(sex) + C(college)"
     if CTRS == "diab":
-        formula = f"{feat} ~ C(diab) + age + C(sex) + C(college) + C(ses) + bmi"
+        formula = f"{feat} ~ C(diab) + age + C(sex) + C(college)"
 
     # Fit model
     model = smf.ols(formula, data=sdf)

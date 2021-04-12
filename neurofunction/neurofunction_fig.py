@@ -100,7 +100,7 @@ p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
 
 suffix1 = f"batch7_GM_{GM_THR}_contrast_age"
 suffix2 = f"batch7_GM_{GM_THR}_contrast_diab"
-cmap = 'PuOr_r'
+cmap = 'PiYG_r'
 vm = 5
 
 # Load images
@@ -115,7 +115,6 @@ fore = image.load_img(OUTDIR \
 fore, _ = map_threshold(
    fore, alpha=PTHR, height_control='fdr', cluster_threshold=UC)
 
-
 #back1 = resample(back1, 4)
 #fore1 = resample(fore1, 4)
 
@@ -126,7 +125,7 @@ fore_pos = image.math_img('img > 0', img=fore)
 fore_neg = image.math_img('img < 0', img=fore)
 
 # Display
-fig = plt.figure(figsize=(8.5, 2.2))
+fig = plt.figure(figsize=(7.25, 2.2))
 #plt.suptitle("Overlaid effects in ALFF with respect to age and T2DM: " \
 #             "UK Biobank dataset")
 
@@ -194,7 +193,7 @@ fore_pos = image.math_img('img > 0', img=fore)
 fore_neg = image.math_img('img < 0', img=fore)
 
 # Display
-fig = plt.figure(figsize=(8.5, 2.2))
+fig = plt.figure(figsize=(7.25, 2.2))
 #plt.suptitle("Overlaid effects in ALFF with respect to age and T2DM: " \
 #             "Meta-analysis from Neuroquery")
 display = plotting.plot_roi(back, cmap=cmap, cut_coords=cut_coords,
@@ -228,3 +227,53 @@ plt.close("all")
 #                  fontsize=12,
 #                  weight="bold",
 #                  color="white")
+
+# %% Cluster maps
+
+## Status
+#print("Exporting thresholded maps")
+#
+## UKB
+#suffix1 = f"batch7_GM_{GM_THR}_contrast_age"
+#suffix2 = f"batch7_GM_{GM_THR}_contrast_diab"
+#
+#img1 = image.load_img(OUTDIR \
+#               + f'stats/pub_meta_neurofunction_zmap_{MDL}_{suffix1}.nii')
+#img2 = image.load_img(OUTDIR \
+#               + f'stats/pub_meta_neurofunction_zmap_{MDL}_{suffix2}.nii')
+#
+#statimg1, _ = map_threshold(
+#   img1, alpha=PTHR, height_control='fdr', cluster_threshold=UC)
+#
+#statimg2, _ = map_threshold(
+#   img2, alpha=PTHR, height_control='fdr', cluster_threshold=UC)
+#
+#
+#statimg1 = image.math_img('np.where(img == 0, np.nan, img)', img=statimg1)
+#statimg2 = image.math_img('np.where(img == 0, np.nan, img)', img=statimg2)
+#
+#nib.save(statimg1, OUTDIR + f"stats/neurofunction_clusters_{suffix1}.nii")
+#nib.save(statimg2, OUTDIR + f"stats/neurofunction_clusters_{suffix2}.nii")
+#
+#
+## Neuroquery
+#suffix1 = "contrast_age"
+#suffix2 = "contrast_diab"
+#
+## Load images
+#img1 = nib.load(HOMEDIR + "results/neuroquery/stats/pub_meta_neuroquery_" \
+#                   f"zmap_{suffix1}.nii")
+#img2 = nib.load(HOMEDIR + "results/neuroquery/stats/pub_meta_neuroquery_" \
+#                   f"zmap_{suffix2}.nii")
+#
+#statimg1, _ = map_threshold(
+#   img1, alpha=PTHR, height_control='fdr', cluster_threshold=UC)
+#
+#statimg2, _ = map_threshold(
+#   img2, alpha=PTHR, height_control='fdr', cluster_threshold=UC)
+#
+#statimg1 = image.math_img('np.where(img == 0, np.nan, img)', img=statimg1)
+#statimg2 = image.math_img('np.where(img == 0, np.nan, img)', img=statimg2)
+#
+#nib.save(statimg1, OUTDIR + f"stats/neuroquery_clusters_{suffix1}.nii")
+#nib.save(statimg2, OUTDIR + f"stats/neuroquery_clusters_{suffix2}.nii")
