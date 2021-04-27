@@ -15,9 +15,9 @@ if 91*109*91 then voxel size is 2mm (standard MNI space)
 
 import os
 from functools import reduce
-from nilearn import plotting, image, datasets, masking
+from nilearn import plotting, image, datasets, masking, glm
 import nibabel as nib
-from nistats.thresholding import map_threshold
+# from nistats.thresholding import map_threshold
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 from IPython import get_ipython
@@ -112,7 +112,7 @@ fore = image.load_img(OUTDIR \
 # (ALready masked and in MNI space)
 
 # Threshold fore image
-fore, _ = map_threshold(
+fore, _ = glm.threshold_stats_img(
    fore, alpha=PTHR, height_control='fdr', cluster_threshold=UC)
 
 #back1 = resample(back1, 4)
@@ -135,7 +135,8 @@ display = plotting.plot_roi(back, cmap=cmap, cut_coords=cut_coords,
 display.add_contours(fore_pos, colors="red", alpha=1, linewidths=0.5*lw)
 display.add_contours(fore_neg, colors="blue", alpha=1, linewidths=0.5*lw)
 
-display.annotate(size=7)
+display.annotate(size=7*fs)
+display._colorbar_ax.tick_params(labelsize=7*fs)
 
 plt.savefig(OUTDIR + f'figures/JAMA_meta_neurofunction_{MDL}_age-diab_overlap.pdf',
             transparent=True)
@@ -176,7 +177,7 @@ extremes([back, fore])
 #UC = UC/((91*10991)/prod)
 
 # Threshold fore image
-fore, _ = map_threshold(
+fore, _ = glm.threshold_stats_img(
    fore, alpha=PTHR, height_control='fdr', cluster_threshold=UC)
 
 # Save thresholded for map
@@ -202,7 +203,8 @@ display = plotting.plot_roi(back, cmap=cmap, cut_coords=cut_coords,
 display.add_contours(fore_pos, colors="red", alpha=1, linewidths=0.5*lw)
 display.add_contours(fore_neg, colors="blue", alpha=1, linewidths=0.5*lw)
 
-display.annotate(size=7)
+display.annotate(size=7*fs)
+display._colorbar_ax.tick_params(labelsize=7*fs)
 
 plt.savefig(HOMEDIR + "results/neuroquery/figures/JAMA_meta_neuroquery_age" \
             "-diab_overlap.pdf", transparent=True)

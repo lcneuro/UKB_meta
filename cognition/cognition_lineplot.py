@@ -236,7 +236,7 @@ sns.lineplot(data=gdf, x="age_group", y="score",
 # ----
 
 # Title
-plt.title(f"Cognitive performance across age\nand T2DM status\n" \
+plt.title(f"Cognitive Performance across Age\nand T2DM Status\n" \
           f"N$_{{T2DM+}}$={ss[1]:,}, " \
           f"N$_{{HC}}$={ss[0]:,}", x=0.42)
 
@@ -264,7 +264,7 @@ for sp in ['bottom', 'top', 'left', 'right']:
 tval, pval = results.tvalues["diab"], results.pvalues["diab"]
 text = f"T2DM+ vs HC:\nT={tval:.1f}, {pformat(pval)}{p2star(pval)}"
 plt.annotate(text, xycoords="axes fraction", xy=[0.279, 0.1],
-             fontsize=8*fs, fontweight="bold", ha="center")
+             fontsize=8*fs, fontweight="regular", ha="center")
 
 plt.gca().yaxis.grid(True)
 plt.tight_layout()

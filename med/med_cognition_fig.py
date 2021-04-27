@@ -36,11 +36,11 @@ CTRS_label = "Metformin only (T2DM+) vs.\nunmedicated (T2DM+)"
 # Case specific values
 cases = [CTRS]
 titles = [
-        "Domain specific cognitive performance\n" \
+        "Domain Specific Cognitive Performance\n" \
         f"({CTRS_label})"
         ]
 ylabeltexts = [
-        f"Percentage difference in cognitive\nperformance (% of avg)",
+        f"Percentage difference in cognitive performance (% of avg)",
         ]
 colors = ["PRGn"]
 ylims = [[-25, 15]]
@@ -189,7 +189,7 @@ for c, case in enumerate(cases):
     plt.axhline(0, linewidth=lw*0.5, color="black", dashes=[4, 4])
     plt.xticks(ticks=np.arange(len(df)), labels=df["label"],
                rotation=xtickrots[c], va=xtickvas[c])
-    plt.gca().tick_params(axis="x", pad=xtickpads[c])
+    plt.gca().tick_params(axis="x", pad=xtickpads[c], labelsize=8)
     plt.gca().xaxis.tick_bottom()
     plt.gca().yaxis.tick_left()
 
@@ -209,7 +209,7 @@ for c, case in enumerate(cases):
                                 connectionstyle="arc3",
                                 facecolor='k',
                                 linewidth=.2),
-                va="center", ha="center", fontsize=7, rotation=90
+                va="center", ha="center", fontsize=9, rotation=90
                 )
 
     # Add scale

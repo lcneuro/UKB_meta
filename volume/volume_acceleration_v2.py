@@ -253,7 +253,7 @@ print(f"Acceleration: +{acc_res:.2g} year/year", f'p={results.pvalues["duration"
 # Unpack plotting utils
 fs, lw = plot_pars
 p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
-lw = lw*1.0
+lw = lw*1.5
 
 # Get data
 gdf = df.copy()
@@ -295,7 +295,7 @@ text = f"T2DM disease duration\nas a continuous linear factor:\n" \
        f"${{H_1}}$:  $\mathrm{{\\beta}}$${{_t}}$ ≠ 0\n" \
        f"T = {tval:.1f}; {pformat(pval)}{p2star(pval)}"
 
-plt.annotate(text, xycoords="axes fraction", xy=[0.23, 0.03],
+plt.annotate(text, xycoords="axes fraction", xy=[0.24, 0.03],
              fontsize=8*fs, fontweight="regular", ha="center")
 
 
@@ -303,13 +303,14 @@ plt.annotate(text, xycoords="axes fraction", xy=[0.23, 0.03],
 # ----
 
 # Title
-ttl = plt.title("Gray Matter Atrophy across Age and T2DM Disease Duration:\n" \
-          f"UK Biobank Dataset \n"
+ttl = plt.title("Gray matter atrophy across age and T2DM disease duration:\n" \
+          f"UK Biobank dataset \n"
           f"    N$_{{≥10y}}$={int(gdf.shape[0]/3)}, " \
           f"N$_{{0–9y}}$={int(gdf.shape[0]/3)}, " \
           f"N$_{{HC}}$={int(gdf.shape[0]/3)}"
           )
 ttl.set_x(ttl.get_position()[0]-0.056)
+ttl.set_y(ttl.get_position()[1]+3)
 
 plt.xlabel("Age group (year)")
 #plt.ylabel("Gray matter volume delineated\nbrain age (y)")
@@ -325,14 +326,14 @@ legend_handles, _ = plt.gca().get_legend_handles_labels()
 
 plt.legend(title="T2DM disease duration",
            handles=legend_handles[::-1],
-           labels=["≥10 years", "0-9 years", "HC"],
+           labels=["≥10 years", "0–9 years", "HC"],
            loc=1)
 
 plt.gca().xaxis.tick_bottom()
 plt.gca().yaxis.tick_left()
 
 for sp in ['bottom', 'top', 'left', 'right']:
-    plt.gca().spines[sp].set_linewidth(0.5*lw)
+    plt.gca().spines[sp].set_linewidth(0.75*lw)
     plt.gca().spines[sp].set_color("black")
 
 plt.gca().xaxis.grid(False)
@@ -341,7 +342,9 @@ plt.tight_layout()
 # Save
 # ----
 
-plt.tight_layout(rect=[0, 0., 1, 0.99])
+plt.tight_layout(rect=[0, 0., 1, 1.02])
 plt.savefig(OUTDIR + "figures/JAMA_meta_figure_volume_acceleration.pdf",
+            transparent=True)
+plt.savefig(OUTDIR + "figures/JAMA_meta_figure_volume_acceleration.svg",
             transparent=True)
 plt.close("all")

@@ -38,16 +38,16 @@ OUTDIR = HOMEDIR + "results/cognition/"
 # Case specific values
 cases = ["age", "diab", "meta"]
 titles = [
-        "Age: UK Biobank dataset (HC only)",
-        "T2DM: UK Biobank dataset (T2DM+ vs. HC)",
-        "T2DM: meta-analysis of published literature (T2DM+ vs. HC)",
+        "Age: UK Biobank Dataset (HC only)",
+        "T2DM: UK Biobank Dataset (T2DM+ vs. HC)",
+        "T2DM: Meta-Analysis of Published Literature (T2DM+ vs. HC)",
         ]
 ylabeltexts = [
         "Percentage change in cognitive\nperformance across age (% per year)",
         "Percentage difference in cognitive\nperformance T2DM+ vs. HC (%)",
         "Standardized mean difference\nT2DM+ vs. HC (Cohen's d)"
         ]
-colors = ["PiYG", "YlGnBu", "cool"]
+colors = ["PiYG", "YlGnBu", "Purples"]
 ylims = [[-2.5, 0.3], [-17.0, 2.5], [-0.75, 0.2]]
 sfs = [8e4, 2e3, 0.4]  # Marker size factors
 sfscf = [15000, 2000, 25]  # Marker size scale factors
@@ -129,7 +129,7 @@ p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
 
 # Figure
 f = plt.figure(figsize=(7.25, 9))
-plt.suptitle("Domain specific cognitive deficits associated with age and T2DM\n")
+plt.suptitle("Domain Specific Cognitive Deficits Associated with Age and T2DM\n")
 
 # Panels A & B
 # ------

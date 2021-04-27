@@ -27,7 +27,7 @@ OUTDIR = HOMEDIR + "results/med/volume/"
 
 # Inputs
 CTRS = "metfonly_unmed"  # Contrast: diab or age
-CTRS_label = "Metformin only (T2DM+) vs.\nunmedicated (T2DM+)"
+CTRS_label = "Metformin Only (T2DM+) vs.\nUnmedicated (T2DM+)"
 
 PARC = 46  # Type of parcellation to use, options: 46 or 139
 
@@ -148,7 +148,7 @@ ax.annotate("Improvement",
 ss = df["sample_sizes"]
 ax.set_xlabel(f"Percentage difference in \ngray matter volume (% of avg)", x=0.4)
 
-ttl = plt.title("Region specific gray matter volume \n" \
+ttl = plt.title("Region Specific Gray Matter Volume \n" \
           f"({CTRS_label})\n" \
           + f"N$_{{metf+}}$={ss[0][1]:,}, N$_{{metf-}}$={ss[0][0]:,}")
 ttl.set_x(ttl.get_position()[0]-0.18)

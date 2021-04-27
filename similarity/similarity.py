@@ -353,21 +353,24 @@ annot_df = pd.DataFrame(np.array(annot_text).reshape(corr_matrix.shape))
 plt.figure(figsize=(4.8, 4.2))
 #plt.rcParams['xtick.labelsize']=16
 #plt.rcParams['ytick.labelsize']=16
-plt.title(f"Correlation based similarities among effects and datasets")
-sns.heatmap(corr_matrix, vmin=-1, vmax=1, cmap="seismic", annot=annot_df,
+plt.title(f"Correlation Based Similarities among Effects and Datasets")
+g = sns.heatmap(corr_matrix, vmin=-1, vmax=1, cmap="seismic", annot=annot_df,
             fmt="", linewidth=1, linecolor="k",
             annot_kws={"fontsize": 8*fs})
+g.figure.axes[-1].tick_params(labelsize=6*fs)
 plt.xticks(rotation=45, ha="right");
 plt.tight_layout()
-#plt.savefig(OUTDIR + f"figures/corr_matrix_{PC}{EXTRA}.pdf")
+plt.savefig(OUTDIR + f"figures/corr_matrix_{PC}{EXTRA}.pdf")
+
+
 
 # TODO
 ## Tidy ip the figure
 ## --------
-#plt.title("")
-#plt.xlabel(ticktext)
+# plt.title("")
+# plt.xlabel(ticktext)
 #
-#plt.savefig(OUTDIR + f"figures/corr_matrix_{PC}_{CORRMET}{EXTRA}.pdf")
+# plt.savefig(OUTDIR + f"figures/corr_matrix_{PC}_{CORRMET}{EXTRA}.pdf")
 
 # %%
 # Scatterplot
