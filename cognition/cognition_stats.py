@@ -47,7 +47,7 @@ RLD = 1 # Reload regressor matrices instead of computing them again
 
 print("\nRELOADING REGRESSORS!\n") if RLD else ...
 
-#raise
+raise
 
 # %%
 # =============================================================================
@@ -338,19 +338,20 @@ for i, feat in enumerate(features):
 
     # Get confidence intervals
     conf_int = results.conf_int().loc[rel_key, :]/norm_fact
+    plus_minus = beta - conf_int[0]
 
     # Get p value
     pval = results.pvalues.loc[rel_key]
 
     # Save stats as dict
-    feat_stats[f"{feat}"] = [list(sample_sizes), tval,
-                              pval, beta, np.array(conf_int)]
+    feat_stats[f"{feat}"] = [list(sample_sizes), tval, pval, beta,
+                             np.array(conf_int), plus_minus]
 
 
 # Convert stats to df and correct p values for multicomp
 df_out = pd.DataFrame.from_dict(
         feat_stats, orient="index",
-        columns=["sample_sizes", "tval", "pval", "beta", "conf_int"]) \
+        columns=["sample_sizes", "tval", "pval", "beta", "conf_int", "plus_minus"]) \
         .reset_index() \
         .rename({"index": "label"}, axis=1) \
         .assign(**{"pval": lambda df: pg.multicomp(list(df["pval"]),

@@ -390,9 +390,10 @@ combos = list(itertools.combinations(keys, 2))
 for combo in tqdm(combos):
     a, b = combo
     plt.figure()
-    plt.scatter(df[a], df[b])
-#    for i in range(len(df)):
-#        plt.annotate(df.loc[i, "label"], xy=[df.loc[i, a], df.loc[i, b]])
+    # plt.scatter(df[a], df[b])
+    # for i in range(len(df)):
+    #     plt.annotate(df.loc[i, "label"], xy=[df.loc[i, a], df.loc[i, b]])
+    sns.lmplot(data=df, x=a, y=b)
     plt.xlabel(a)
     plt.ylabel(b)
     plt.tight_layout()

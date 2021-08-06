@@ -40,7 +40,7 @@ RLD = 1  # Reload regressor matrices instead of computing them again
 
 print("\nRELOADING REGRESSORS!\n") if RLD else ...
 
-#raise
+# raise
 
 # %%
 # =============================================================================
@@ -182,8 +182,18 @@ model = smf.ols(f"score ~ diab + age + C(sex) + C(college)", data=df)
 results = model.fit()
 print(results.summary())
 
+# Covariance matrix of coefficients
+print(results.cov_params())
+
+"""
+# CI for the ratio below is computed using an online tool (Fieller method):
+https://www.graphpad.com/quickcalcs/errorProp1/?Format=SEM
+
+An alternative approach would be to bootstrap using sigmas and covariances.
+"""
+
 # Estimated age gap between the two cohorts#
-print(f'Estimated age gap: {results.params["diab"]/results.params["age"]:.2f}, years.')
+print(f'\nEstimated age gap: {results.params["diab"]/results.params["age"]:.2f}, years.')
 
 # %%
 # =============================================================================

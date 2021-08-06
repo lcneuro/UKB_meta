@@ -44,7 +44,7 @@ RLD = 1 # Reload regressor matrices instead of computing them again
 
 print("\nRELOADING REGRESSORS!\n") if RLD else ...
 
-#raise
+raise
 
 # %%
 # =============================================================================
@@ -238,9 +238,18 @@ check_assumptions(
 # Calculate acceleration of aging in additional year/year
 acc_res = results.params["duration"]/results.params["age"]
 
+# Covariance matrix of coefficients
+print(results.cov_params())
+
+"""
+# CI for the ratio is computed using an online tool (Fieller method):
+https://www.graphpad.com/quickcalcs/errorProp1/?Format=SEM
+
+An alternative approach would be to bootstrap using sigmas and covariances.
+"""
+
 print(f"Acceleration: +{acc_res:.2g} year/year", f'p={results.pvalues["duration"]:.2g},', \
       "significant" if results.pvalues["duration"]<0.05 else "not significant!")
-
 
 
 # %%

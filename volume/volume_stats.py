@@ -42,17 +42,17 @@ SRCDIR = HOMEDIR + "data/"
 OUTDIR = HOMEDIR + "results/volume/"
 
 # Inputs
-CTRS = "diab"  # Contrast: diab or age
+CTRS = "age"  # Contrast: diab or age
 T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
 PARC = 46  # Type of parcellation to use, options: 46 or 139
 ## to exlucde due to abnormal total gray matter volumes
 excl_region = ["Pallidum"]  # Regions to exclude
-RLD = False  # Reload regressor matrices instead of computing them again
+RLD = True  # Reload regressor matrices instead of computing them again
 
 print("\nRELOADING REGRESSORS!\n") if RLD else ...
 
-#raise
+# raise
 
 # %%
 # =============================================================================
@@ -390,19 +390,20 @@ for i, feat in tqdm(enumerate(features), total=len(features), desc="Models fitte
 
     # Get confidence intervals
     conf_int = results.conf_int().loc[rel_key, :]/norm_fact
+    plus_minus = beta - conf_int[0]
 
     # Get p value
     pval = results.pvalues.loc[rel_key]
 
     # Save stats as dict
     feat_stats[f"{feat}"] = [list(sample_sizes), tval, pval, beta,
-                              np.array(conf_int)]
+                             np.array(conf_int), plus_minus]
 
 
 # Convert stats to df and correct p values for multicomp
 df_out = pd.DataFrame.from_dict(
         feat_stats, orient="index",
-        columns=["sample_sizes", "tval", "pval", "beta", "conf_int"]) \
+        columns=["sample_sizes", "tval", "pval", "beta", "conf_int", "plus_minus"]) \
         .reset_index() \
         .rename({"index": "label"}, axis=1) \
         .assign(**{"pval": lambda df: pg.multicomp(list(df["pval"]),
