@@ -36,7 +36,9 @@ from nistats.thresholding import map_threshold
 import nibabel as nib
 
 get_ipython().run_line_magic('cd', '..')
-from helpers.regression_helpers import check_covariance, match, match_cont, check_assumptions
+from helpers.regression_helpers import check_covariance, match, match_cont, \
+    check_assumptions
+from helpers.data_loader import DataLoader
 get_ipython().run_line_magic('cd', 'neurofunction')
 
 
@@ -53,11 +55,11 @@ OUTDIR = HOMEDIR + "results/neurofunction/"
 
 # Inputs
 RLD = False  # Reload regressor matrices instead of computing them again
-BATCH = 7  # Batch of preprocessed images to use
+BATCH = 8  # Batch of preprocessed images to use
 
-T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
+T1DM_CO = 40  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
-## to exlucde due to abnormal total gray matter neurofunctions
+AGE_CO = 50  # Age cutoff (related to T1DM_CO) to avoid T2DM low duration subjects
 
 CTRS = "diab"  # Contrast: diab or age
 CT = 12  # Cluster threshold for group level analysis (in voxels?)
@@ -70,8 +72,8 @@ VOLUME = 1000  # Cluster volume, mm3
 VOXEL_DIM = 2.4  # Voxel dimension in work space, assuming cubic voxels, mm
 
 regressors_dict = {
-    "diab": ["subject_label", "diab", "age", "sex", "college"],
-    "age": ["subject_label", "age", "sex", "college"],
+    "diab": ["subject_label", "diab", "age", "sex", "college", "htn"],
+    "age": ["subject_label", "age", "sex", "college", "htn"],
     }
 
 print("Settings:\n" \
@@ -89,41 +91,32 @@ print("Loading data.")
 
 # Load batch
 # -------
-img_subs = pd.read_csv(SRCDIR + "neurofunction/pub_meta_subjects_batch7_alff.csv",
+img_subs = pd.read_csv(SRCDIR + f"neurofunction/pub_meta_subjects_batch{BATCH}_alff.csv",
                        index_col=0)
 # Load regressors
 # ------
-# Age
-age = pd.read_csv(SRCDIR + "ivs/age.csv", index_col=0)[["eid", "age-2"]] \
-    .rename({"age-2": "age"}, axis=1)
 
-# Sex
-sex = pd \
-    .read_csv(SRCDIR + "ivs/sex.csv", index_col=0)[["eid", "sex"]] \
-    .set_axis(["eid", "sex"], axis=1)
+# Initiate loader object
+dl = DataLoader()
 
-# Diabetes diagnosis
-diab = pd.read_csv(SRCDIR + "ivs/diab.csv", index_col=0)[["eid", "diab-2"]] \
-    .rename({"diab-2": "diab"}, axis=1) \
-    .query('diab >= 0')
+# Load data
+dl.load_basic_vars(SRCDIR)
 
-# College
-college = pd.read_csv(SRCDIR + "ivs/college.csv", index_col=0)[["eid", "college"]] \
+# Extract relevant variables
+age, sex, diab, college, bmi, mp, hrt, age_onset, duration, htn = \
+    (dl.age, dl.sex, dl.diab, dl.college, dl.bmi, dl.mp, dl.hrt, dl.age_onset, \
+    dl.duration, dl.htn)
 
-# Age of diabetes diagnosis (rough estimate!, averaged)
-age_onset = pd \
-    .read_csv(SRCDIR + "ivs/age_onset.csv", index_col=0) \
-    .set_index("eid") \
-    .mean(axis=1) \
-    .rename("age_onset") \
-    .reset_index()
 
-# Remove diabetic subjects with missing age of onset OR have too early age of onset
-# which would suggest T1DM. If age of onset is below T1DM_CO, subject is excluded.
-age_onset = age_onset \
-    .merge(diab, on="eid", how="inner") \
-    .query(f'(diab==0 & age_onset!=age_onset) or (diab==1 & age_onset>={T1DM_CO})') \
-    [["eid", "age_onset"]]
+# Restrictive variables
+# -----
+
+# Perform filtering
+dl.filter_vars(AGE_CO, T1DM_CO)
+
+# Extract filtered series
+age, mp, hrt, age_onset = dl.age, dl.mp, dl.hrt, dl.age_onset
+
 
 # =============================================================================
 # Create gm mask
@@ -155,9 +148,9 @@ gm_mask = image.resample_img(
 # Choose variables
 regressors = functools.reduce(
         lambda left, right: pd.merge(left, right, on="eid", how="inner"),
-        [diab, age, sex, college, age_onset]
+        [age, sex, college, diab, mp, hrt, htn, age_onset, duration]
         ) \
-        .drop("age_onset", axis=1)
+        .drop(["mp", "hrt", "age_onset"], axis=1)
 
 
 # If contrast is age
@@ -196,12 +189,13 @@ if CTRS == "age":
         plt.close("all")
 
     if RLD == False:
+
         # Match
         regressors_matched = match_cont(
                 df=regressors_clean,
-                main_var="age",
-                vars_to_match=["sex", "college"],
-                N=1,
+                main_vars=["age"],
+                vars_to_match=["sex", "college", "htn"],
+                value=3,
                 random_state=1
                 )
 
@@ -229,14 +223,14 @@ if CTRS == "diab":
         plt.close("all")
 
     if RLD == False:
+
         # Match
         regressors_matched = match(
-                df=regressors_clean,
-                main_var="diab",
-                vars_to_match=["age", "sex", "college"],
-                N=1,
-                random_state=1
-                )
+            df=regressors_clean,
+            main_vars=["diab"],
+            vars_to_match=["age", "sex", "college", "htn"],
+            random_state=1
+            )
 
 # Status
 print("Covariance checked.")

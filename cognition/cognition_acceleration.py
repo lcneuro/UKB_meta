@@ -21,7 +21,8 @@ from tqdm import tqdm
 from IPython import get_ipython
 
 get_ipython().run_line_magic('cd', '..')
-from helpers.regression_helpers import check_covariance, match_multi, check_assumptions
+from helpers.data_loader import DataLoader
+from helpers.regression_helpers import check_covariance, match_cont, check_assumptions
 from helpers.plotting_style import plot_pars, plot_funcs
 get_ipython().run_line_magic('cd', 'cognition')
 
@@ -36,15 +37,18 @@ OUTDIR = HOMEDIR + "results/cognition/"
 
 # Inputs
 CTRS = "duration"  # Contrast: diab or age
-T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
+T1DM_CO = 40  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
+AGE_CO = 50  # Age cutoff (related to T1DM_CO) to avoid T2DM low duration subjects
 DUR_CO = 10  # Year to separate subjects along duration <x, >=x
 PARC = 46  # Type of parcellation to use, options: 46 or 139
-RLD = 1 # Reload regressor matrices instead of computing them again
+RLD = 0 # Reload regressor matrices instead of computing them again
 
 print("\nRELOADING REGRESSORS!\n") if RLD else ...
 
-#raise
+# <><><><><><><><>
+raise
+# <><><><><><><><>
 
 # %%
 # =============================================================================
@@ -74,45 +78,27 @@ data = data.rename(labels, axis=1)
 
 # Load regressors
 # ------
-# Age
-age = pd.read_csv(SRCDIR + "ivs/age.csv", index_col=0)[["eid", "age-2"]] \
-    .rename({"age-2": "age"}, axis=1)
 
-# Sex
-sex = pd \
-    .read_csv(SRCDIR + "ivs/sex.csv", index_col=0)[["eid", "sex"]] \
-    .set_axis(["eid", "sex"], axis=1)
+# Initiate loader object
+dl = DataLoader()
 
-# Diabetes diagnosis
-diab = pd.read_csv(SRCDIR + "ivs/diab.csv", index_col=0)[["eid", "diab-2"]] \
-    .rename({"diab-2": "diab"}, axis=1) \
-    .query('diab >= 0')
+# Load data
+dl.load_basic_vars(SRCDIR)
 
-# College
-college = pd.read_csv(SRCDIR + "ivs/college.csv", index_col=0)[["eid", "college"]] \
+# Extract relevant variables
+age, sex, diab, college, bmi, mp, hrt, age_onset, duration, htn = \
+    (dl.age, dl.sex, dl.diab, dl.college, dl.bmi, dl.mp, dl.hrt, dl.age_onset, \
+    dl.duration, dl.htn)
 
-# Age of diabetes diagnosis (rough estimate!, averaged)
-age_onset = pd \
-    .read_csv(SRCDIR + "ivs/age_onset.csv", index_col=0) \
-    .set_index("eid") \
-    .mean(axis=1) \
-    .rename("age_onset") \
-    .reset_index()
 
-# Duration
-duration = age_onset \
-    .merge(age, on="eid", how="inner") \
-    .pipe(lambda df: df.assign(**{
-            "duration": df["age"] - df["age_onset"]})) \
-    .dropna(how="any") \
-    [["eid", "duration"]]
+# Restrictive variables
+# -----
 
-# Remove diabetic subjects with missing age of onset OR have too early age of onset
-# which would suggest T1DM. If age of onset is below T1DM_CO, subject is excluded.
-age_onset = age_onset \
-    .merge(diab, on="eid", how="inner") \
-    .query(f'(diab==0 & age_onset!=age_onset) or (diab==1 & age_onset>={T1DM_CO})') \
-    [["eid", "age_onset"]]
+# Perform filtering
+dl.filter_vars(AGE_CO, T1DM_CO)
+
+# Extract filtered series
+age, mp, hrt, age_onset = dl.age, dl.mp, dl.hrt, dl.age_onset
 
 # %%
 # =============================================================================
@@ -126,9 +112,9 @@ print(f"Building regressor matrix with contrast [{CTRS}]")
 # Choose variables and group per duration
 regressors = functools.reduce(
         lambda left, right: pd.merge(left, right, on="eid", how="inner"),
-        [age, sex, college, diab, age_onset]
+        [age, sex, college, diab, mp, hrt, htn, age_onset]
         ) \
-        .drop("age_onset", axis=1) \
+        .drop(["age_onset", "mp", "hrt"], axis=1) \
         .merge(duration, on="eid", how="left") \
         .pipe(lambda df: df.assign(**{
         "duration_group":
@@ -182,12 +168,12 @@ for name, type_ in var_dict.items():
 
 if RLD == False:
     # Match
-    regressors_matched = match_multi(
+    regressors_matched = match_cont(
             df=regressors_clean,
-            main_var="duration_group",
-            vars_to_match=["age", "sex", "college"],
-            N=1,
-            random_state=1
+            main_vars=["duration_group"],
+            vars_to_match=["age", "sex", "college", "htn"],
+                value=1000,
+                random_state=10
             )
 
 if RLD == False:
@@ -262,6 +248,16 @@ with open(OUTDIR + f"stats_misc/pub_meta_cognition_acceleration_regression_table
 
 # Calculate acceleration of aging in additional year/year
 acc_res = results.params["duration"]/results.params["age"]
+
+# Covariance matrix of coefficients
+print(results.cov_params())
+
+"""
+# CI for the ratio is computed using an online tool (Fieller method):
+https://www.graphpad.com/quickcalcs/errorProp1/?Format=SEM
+
+An alternative approach would be to bootstrap using sigmas and covariances.
+"""
 
 print(f"Acceleration: +{acc_res:.2g} year/year", f'p={results.pvalues["duration"]:.2g},', \
       "significant" if results.pvalues["duration"]<0.05 else "not significant!")

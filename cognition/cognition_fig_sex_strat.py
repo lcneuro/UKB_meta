@@ -36,7 +36,7 @@ OUTDIR = HOMEDIR + "results/cognition/"
 
 # Inputs
 # Case specific values
-cases = ["age", "diab", "meta"]
+cases = ["age_F", "age_M", "diab_F", "diab_M"]
 titles = [
         "Age: UK Biobank Dataset (HC only)",
         "T2DM: UK Biobank Dataset (T2DM+ vs. HC)",
@@ -61,7 +61,9 @@ xtickrots = [0, 0, 45]  # Rotation of xticks
 xtickvas = ["top", "top", "top"]  # Vertical alignment for xticks
 xtickpads = [0, 0, 0]  # Paddong fo xticks
 
-#raise
+# <><><><><><><><>
+raise
+# <><><><><><><><>
 
 # %%
 

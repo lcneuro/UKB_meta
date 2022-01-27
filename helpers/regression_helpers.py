@@ -6,6 +6,7 @@ Created on Fri Mar  5 20:58:02 2021
 @author: botond
 """
 
+import functools
 import pandas as pd
 import numpy as np
 from scipy import stats, spatial
@@ -230,135 +231,207 @@ def check_assumptions(results, sdf, prefix):
     #scdensplot(sdf["age"], sdf["feat"])
     #scdensplot(sdf["age"], results.fittedvalues)
 
-def match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
+# def match(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
+#     """
+#     Function to perform matching across chosen independent variables.
+#     Simple matching with no grouping involved.
+#     """
+
+#     # Separate items per main variable
+#     exp_subs = df.query(f"{main_var} == 1")
+#     ctrl_subs = df.query(f"{main_var} == 0")
+
+#     # List of matched items, later to serve as a df
+#     mdf_list = []
+
+#     # List to store number of available subject
+#     candidate_numbers_list = []
+
+#     # Iterate over all subjects positive to the treatment
+#     for i, exp_sub in tqdm(enumerate(exp_subs.iterrows()), total=exp_subs.shape[0]):
+
+#         # Find control subjects that match along variables
+#         query_statement = " & ".join([f'{var} == {exp_sub[1][var]}' \
+#                                       for var in vars_to_match])
+#         candidates = ctrl_subs.query(query_statement)
+
+#         # Store numbers
+#         candidate_numbers_list.append(len(candidates))
+
+#         # If there is at least 1 match
+#         if candidates.shape[0] >= N:
+
+#             # Pick from candidates randomly
+#             picked_ctrl_subs = candidates.sample(n=N, random_state=random_state)
+
+#             # If found: Take out subject from ctrl_subs hat
+#             ctrl_subs = ctrl_subs \
+#                 .merge(
+#                     picked_ctrl_subs,
+#                     on=ctrl_subs.columns.to_list(),
+#                     how="left",
+#                     indicator=True
+#                     ) \
+#                 .query('_merge != "both"').drop("_merge", axis=1)
+
+#             # If found: add both subjects to mdf
+#             mdf_list.append(exp_sub[1].to_frame().T)
+#             mdf_list.append(picked_ctrl_subs)
+
+#         else:
+#             pass
+# #            print(f'\nNo match found for: {int(exp_sub[1]["eid"])}')
+
+#     # Concat into df
+#     mdf = pd.concat(mdf_list, axis=0)
+
+#      # Analyze candidate availability
+#     candidate_numbers = pd.DataFrame(candidate_numbers_list, columns=["count"])
+#     print(f"Matching info:\nmatched subjects: N={mdf.shape[0]}\n", \
+#             "candidates:\n", candidate_numbers.describe())
+
+#     return mdf
+
+
+def match(df=None, main_vars=[], vars_to_match=[], random_state=1):
     """
-    Function to perform matching across chosen independent variables.
-    Simple matching with no grouping involved.
+    A more efficient algorithm for matching. This implementation allows matching
+    on more than just two levels of the contrast variable (eg. duration groups)
+    and there can be more than just one contrast variable (eg. sex and t2dm).
+
+    The limiation is that it's not capable of ratio matching. Only 1:1
+    exact matching is possible with the current implementation.
+
+    With my own terms: this algorithm does perfect matching in 1:1 ratio.
+    (not ratio matching!)
+
+    Note: this algorithm exactly matches across all confounders.
+    In theory could be relaxed in a sense that it matches the distributions
+    within confounders only, not considering cross relations across confounders.
+    Example: 56-0, 60-1 can be matched with either 56-0, 60-1 (exact across all
+    confounders) OR 56-1, 60-1 (within confounder only, second case).
+
+    This implementation results in more conservative matches where potential
+    interactions among confounders are mitigated. This could be relaxed with
+    a different implementation.
+
     """
 
-    # Separate items per main variable
-    exp_subs = df.query(f"{main_var} == 1")
-    ctrl_subs = df.query(f"{main_var} == 0")
+    # Group by variables of contrast
+    gb = df.groupby(main_vars)
+    dfs = [gb.get_group(x) for x in gb.groups]
 
-    # List of matched items, later to serve as a df
-    mdf_list = []
+    # Transform groups to prepare for matching (includes shuffling and unique counter)
+    dfs = list(map(
+        lambda df: df \
+        .sample(frac=1, random_state=random_state) \
+        .reset_index(drop=True) \
+        .pipe(lambda df: df \
+              .assign(**{"count_uq": df.groupby(vars_to_match).cumcount()})),
+        dfs))
 
-    # List to store number of available subject
-    candidate_numbers_list = []
+    # Perform matching
+    raw_matches = functools.reduce(
+            lambda left, right: pd.merge(
+                left, right, on=vars_to_match+["count_uq"], how="inner",
+                suffixes=[
+                    df[main_vars].astype(str).agg("|".join, axis=1).unique()[0] \
+                        if main_vars[0] in df.columns else None \
+                        for df in [left, right]]),
+            dfs
+            )
 
-    # Iterate over all subjects positive to the treatment
-    for i, exp_sub in tqdm(enumerate(exp_subs.iterrows()), total=exp_subs.shape[0]):
+    # Get the eids of matched records
+    eids = raw_matches[[col for col in raw_matches.columns if "eid" in col]].melt(value_name="eid")["eid"]
 
-        # Find control subjects that match along variables
-        query_statement = " & ".join([f'{var} == {exp_sub[1][var]}' \
-                                      for var in vars_to_match])
-        candidates = ctrl_subs.query(query_statement)
+    # Extract matched records from input df instead of having to refine raw matches
+    mdf = df.set_index("eid").loc[eids]
 
-        # Store numbers
-        candidate_numbers_list.append(len(candidates))
+    # Sort
+    mdf = mdf.sort_index().reset_index()
 
-        # If there is at least 1 match
-        if candidates.shape[0] >= N:
-
-            # Pick from candidates randomly
-            picked_ctrl_subs = candidates.sample(n=N, random_state=random_state)
-
-            # If found: Take out subject from ctrl_subs hat
-            ctrl_subs = ctrl_subs \
-                .merge(
-                    picked_ctrl_subs,
-                    on=ctrl_subs.columns.to_list(),
-                    how="left",
-                    indicator=True
-                    ) \
-                .query('_merge != "both"').drop("_merge", axis=1)
-
-            # If found: add both subjects to mdf
-            mdf_list.append(exp_sub[1].to_frame().T)
-            mdf_list.append(picked_ctrl_subs)
-
-        else:
-            pass
-#            print(f'\nNo match found for: {int(exp_sub[1]["eid"])}')
-
-    # Concat into df
-    mdf = pd.concat(mdf_list, axis=0)
-
-     # Analyze candidate availability
-    candidate_numbers = pd.DataFrame(candidate_numbers_list, columns=["count"])
-    print(f"Matching info:\nmatched subjects: N={mdf.shape[0]}\n", \
-            "candidates:\n", candidate_numbers.describe())
+    print(
+        f"Matching info:\n" \
+        f"matched samples: N={mdf.shape[0]} out of {df.shape[0]}\n" \
+        f"matched subjects per level: N={int(mdf.shape[0]/len(dfs))}"
+            )
 
     return mdf
 
-def match_cont(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
-    """
-    Matches covariates across a continuous main variable. Covariates to match
-    must be binary!
-
+def match_cont(df=None, main_vars=[], vars_to_match=[], value=5, random_state=1):
     """
 
-    # Entires that are matched will be removed from this df to avoid replacement
-    remaining_entries = df.copy()
+    The efficient matching algorithm adapted to DVs with several increments where
+    for the sake of finding adequate number of matches, certain increments which
+    have low number of samples might be thrown away. Using the parameter "value"
+    we determine how much we value keeping an increment over having to throw
+    away samples due to lack of ability to match them (depth vs N_inc tradeoff).
 
-    # List of matched items, later to serve as a df
-    mdf_list = []
+    """
 
-    # List to store number of available subject
-    candidate_numbers_list = []
+    # Group by variables of contrast
+    gb = df[["eid"] + main_vars + vars_to_match].groupby(main_vars)
+    dfs = [gb.get_group(x) for x in gb.groups]
 
-    for i, entry in tqdm(enumerate(
-                    df.sample(frac=1, random_state=random_state).iterrows()),
-                    total=df.shape[0],
-                    desc="Matching subject: "):
+    # Transform groups to prepare for matching (includes shuffling and unique counter)
+    dfs = list(map(
+        lambda df: df \
+        .sample(frac=1, random_state=random_state) \
+        .reset_index(drop=True) \
+        .pipe(lambda df: df \
+              .assign(**{"count_uq": df.groupby(vars_to_match).cumcount()})),
+        dfs))
 
-        # Make sure entry has not been picked yet
-        if entry[1]["eid"].astype(int) not in remaining_entries["eid"].to_list():
-            continue
+    # Align up samples
+    aligned = functools.reduce(
+        lambda left, right: pd.merge(
+            left, right, on=vars_to_match+["count_uq"], how="outer",
+            suffixes=[
+                df[main_vars].astype(str).agg("|".join, axis=1).unique()[0] \
+                    if main_vars[0] in df.columns else None \
+                    for df in [left, right]]),
+        dfs
+        )
 
-        # Find candidate subjects that match along variables
-        query_statement = \
-            " & ".join([f'{var} != {entry[1][var]}' for var in vars_to_match] + \
-                        [f'{main_var} == {entry[1][main_var]}'])
+    # Take eid columns only
+    aligned_eid = aligned[[col for col in aligned.columns if "eid" in col]]
 
-        candidates = remaining_entries.query(query_statement)
+    # Store original number of increments
+    N_inc_og = aligned_eid.shape[1]
 
-        # Store numbers
-        candidate_numbers_list.append(len(candidates))
+    # Count samples per DV increment
+    counts = (~aligned_eid.isna()).astype(int).sum(axis=0)
 
-        # If there is at least 1 match
-        if candidates.shape[0] >= N:
+    # Count holes
+    misscounts = aligned_eid.isna().astype(int).sum(axis=0)
 
-            # Pick from candidates randomly
-            picked_ctrl_subs = candidates.sample(n=N, random_state=random_state)
+    # Select eid-increment columns where the "sample N"-"hole N" diff is worth keeping
+    incs_to_keep = aligned_eid.columns[((value*counts - misscounts)>0).to_list()].to_list()
 
-            # Merge original entry and picked entries
-            entries_merged = pd.concat((picked_ctrl_subs, entry[1].to_frame().T))
+    # Store kept number of increments
+    N_inc = len(incs_to_keep)
 
-            # If found: Take out subject from ctrl_subs hat
-            remaining_entries = remaining_entries \
-                .merge(
-                    entries_merged,
-                    on=remaining_entries.columns.to_list(),
-                    how="left",
-                    indicator=True
-                    ) \
-                .query('_merge != "both"').drop("_merge", axis=1)
+    # Drop unwanted increments
+    aligned = aligned[incs_to_keep + vars_to_match + ["count_uq"]]
 
-            # If found: add both subjects to mdf
-            mdf_list.append(entries_merged)
+    # Drop holes
+    raw_matches = aligned.dropna(how="any", axis=0)
 
-        else:
-            pass
-#            print(f'\nNo match found for: {int(entry[1]["eid"])}')
+    # Get the eids of matched records
+    eids = raw_matches[[col for col in raw_matches.columns if "eid" in col]].melt(value_name="eid")["eid"]
 
-    # Concat into df
-    mdf = pd.concat(mdf_list, axis=0)
+    # Extract matched records from input df instead of having to refine raw matches
+    mdf = df.set_index("eid").loc[eids]
 
-     # Analyze candidate availability
-    candidate_numbers = pd.DataFrame(candidate_numbers_list, columns=["count"])
-    print(f"Matching info:\nmatched subjects: N={mdf.shape[0]}\n", \
-            "candidates:\n", candidate_numbers.describe())
+    # Sort
+    mdf = mdf.sort_index().reset_index()
+
+    print(
+        f"Matching info:\n" \
+        f"matched samples: N={mdf.shape[0]} out of {df.shape[0]}\n" \
+        f"increments: {N_inc} out of {N_inc_og} retained\n" \
+        f"matched subjects per level: N={int(mdf.shape[0]/N_inc)}"
+            )
 
     return mdf
 
@@ -535,7 +608,146 @@ def match_multi(df=None, main_var=None, vars_to_match=[], N=1, random_state=1):
 
     # Analyze candidate availability
     candidate_numbers = pd.DataFrame(candidate_numbers_list, columns=["count"])
-    print(f"Matching info:\nmatched subjects: N={mdf.shape[0]}\n", \
+    print(f"\nMatching info:\nmatched subjects: N={mdf.shape[0]}\n", \
             "candidates:\n", candidate_numbers.describe())
 
     return mdf
+
+# Variable balancer
+def detrender(df=None, x=None, y=None, thr=0.05, sub_var=None, sub_val=None,
+              weight_fact=1):
+    """
+    This function minimizes correlation between 2 variables by removing samples
+    which are driving the correlation itself.
+
+    Method:
+        remove entries with highest dx*dy one by one until pearson's r is below
+        the specified threshold (the abs value of r)
+
+    Additional inputs:
+    sub_var: name of variable to slice into before detrending (eg. sex)
+    sub_val: value of sub_var to keep before to detrending (eg. 1)
+    weight_fact: to avoid u shaped resulting trends, we can weigh dy more than dx
+        using this value. This is the exponent to dy**X. Sign will be kept.
+        Empirical method.
+
+    """
+    # Convert query statements
+    pos = f'{sub_var} == {sub_val}' if type(sub_val)!=str \
+        else f'{sub_var} == "{sub_val}"'
+    neg = f'{sub_var} != {sub_val}' if type(sub_val)!=str \
+        else f'{sub_var} != "{sub_val}"'
+
+    # Make copy of input df
+    df_og = df.copy()
+
+    # Transforms (more specific)
+    df = df_og \
+        .query(pos) \
+        .sort_values(by=[x, y]) \
+        .reset_index(drop=True)
+
+    # Initial sample size
+    s0 = df.shape[0]
+
+    # Initial state for r
+    r, _ = stats.pearsonr(df[x], df[y])
+
+    # Repeat until threshold is reached
+    while abs(r) > thr:
+
+        # Compute residuals
+        dx = df.index.to_numpy() - df.index.to_numpy().mean()
+        dy = df[y] - df[y].mean()
+
+        # Weight along y axis differently to avoud u shape
+        dy = np.sign(dy)*abs(dy**weight_fact)
+
+        # Remove top trend driver
+        ind_to_remove = np.argmax(dx*dy)
+
+        # Status
+        # print("Removing subject:", df.loc[ind_to_remove]["eid"], \
+        #       " age:", df.loc[ind_to_remove][x])
+
+        # Remove old index col and reset_index
+        df = df.drop(ind_to_remove)
+
+        # Reset index
+        df = df.reset_index(drop=True)
+
+        # Compute new r, p
+        r, p = stats.pearsonr(df[x], df[y])
+
+    # Status
+    print("\nNumber of removed subjects: ",  s0-df.shape[0], "Remaining: ", df.shape[0])
+
+    # Build new full df
+    df = pd.concat((df, df_og.query(neg)), axis=0)
+
+    # Return df
+    return df
+
+# Diab duration detrender
+def detrend_diab_sex(df, weight_fact=3, thr=.05):
+    """
+    Wrapper of duration for diabetes duration in two sexes.
+
+    weight_fact: determines how much we weigh dy over dx to avoid U shaped distributions
+    """
+
+    # Separate t2dm from hc
+    df_hc = df.query("diab == 0")
+    df_t2 = df.query("diab == 1")
+
+    # Detrend age vs duration
+    # In Males
+    df_detrended_t2_temp = detrender(
+        df=df_t2, x="age", y="duration", thr=thr,
+        sub_var="sex", sub_val=1, weight_fact=weight_fact
+        )
+
+    # In Females
+    df_detrended_t2 = detrender(
+        df=df_detrended_t2_temp, x="age", y="duration", thr=thr,
+        sub_var="sex", sub_val=0, weight_fact=weight_fact
+        )
+
+    # Recombine t2dm and hc
+    df_detrended = pd.concat(
+        (df_detrended_t2, df_hc),
+        axis=0, ignore_index=True
+        )
+
+    # Match
+
+    # Return
+    return df_detrended
+
+def detrend_diab_sex_info(df):
+    """
+    Simple function to print duration trending results. Separate function so can
+    print after matching.
+    """
+
+    # Duration differences among sexes
+    print("\nMedian duration:\n", df.query('diab==1').groupby(["sex"])["duration"].median())
+    print("Mean duration:\n", df.query('diab==1').groupby(["sex"])["duration"].mean())
+
+    # Duraton vs age
+    print("\nCorrelations:")
+    print("Males:",
+        stats.pearsonr(
+            *[df.query('sex == 1 & diab == 1')[col] \
+              for col in ["age", "duration"]]),
+         "\nFemales:",
+        stats.pearsonr(
+            *[df.query('sex == 0 & diab == 1')[col] \
+              for col in ["age", "duration"]])
+            )
+
+
+
+
+
+

@@ -21,6 +21,7 @@ import itertools
 import functools
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scipy import stats
 import pingouin as pg
 import statsmodels.formula.api as smf
 import statsmodels.api as sm
@@ -28,7 +29,9 @@ from tqdm import tqdm
 from IPython import get_ipython
 
 get_ipython().run_line_magic('cd', '..')
-from helpers.regression_helpers import check_covariance, match_mah, match_cont, check_assumptions
+from helpers.regression_helpers import check_covariance, match, match_cont, \
+check_assumptions, detrender
+from helpers.data_loader import DataLoader
 get_ipython().run_line_magic('cd', 'volume')
 
 # =============================================================================
@@ -43,17 +46,25 @@ SRCDIR = HOMEDIR + "data/"
 OUTDIR = HOMEDIR + "results/volume/"
 
 # Inputs
-CTRS = "age"  # Contrast: diab or age
-T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
+CTRS = "diab"  # Contrast: diab or age
+T1DM_CO = 40  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
+AGE_CO = 50  # Age cutoff (related to T1DM_CO) to avoid T2DM low duration subjects
 PARC = 46  # Type of parcellation to use, options: 46 or 139
 ## to exlucde due to abnormal total gray matter volumes
+STRAT_SEX = True # Stratify sex or not #TODO: need to adjust detrending accordinlgy
+SEX = 1  # If stratifying per sex, which sex to keep
+
+EXTRA = "_M"  # Extra suffix for saved files
 excl_region = ["Pallidum"]  # Regions to exclude
-RLD = True  # Reload regressor matrices instead of computing them again
+RLD = False  # Reload regressor matrices instead of computing them again
 
 print("\nRELOADING REGRESSORS!\n") if RLD else ...
 
-# raise
+# <><><><><><><><>
+raise
+# <><><><><><><><>
+
 
 # %%
 # =============================================================================
@@ -80,37 +91,27 @@ data = data.rename(labels, axis=1).set_index("eid")
 
 # Load regressors
 # ------
-# Age
-age = pd.read_csv(SRCDIR + "ivs/age.csv", index_col=0)[["eid", "age-2"]] \
-    .rename({"age-2": "age"}, axis=1)
 
-# Sex
-sex = pd \
-    .read_csv(SRCDIR + "ivs/sex.csv", index_col=0)[["eid", "sex"]] \
-    .set_axis(["eid", "sex"], axis=1)
+# Initiate loader object
+dl = DataLoader()
 
-# Diabetes diagnosis
-diab = pd.read_csv(SRCDIR + "ivs/diab.csv", index_col=0)[["eid", "diab-2"]] \
-    .rename({"diab-2": "diab"}, axis=1) \
-    .query('diab >= 0')
+# Load data
+dl.load_basic_vars(SRCDIR)
 
-# College
-college = pd.read_csv(SRCDIR + "ivs/college.csv", index_col=0)[["eid", "college"]] \
+# Extract relevant variables
+age, sex, diab, college, bmi, mp, hrt, age_onset, duration, htn = \
+    (dl.age, dl.sex, dl.diab, dl.college, dl.bmi, dl.mp, dl.hrt, dl.age_onset, \
+    dl.duration, dl.htn)
 
-# Age of diabetes diagnosis (rough estimate!, averaged)
-age_onset = pd \
-    .read_csv(SRCDIR + "ivs/age_onset.csv", index_col=0) \
-    .set_index("eid") \
-    .mean(axis=1) \
-    .rename("age_onset") \
-    .reset_index()
 
-# Remove diabetic subjects with missing age of onset OR have too early age of onset
-# which would suggest T1DM. If age of onset is below T1DM_CO, subject is excluded.
-age_onset = age_onset \
-    .merge(diab, on="eid", how="inner") \
-    .query(f'(diab==0 & age_onset!=age_onset) or (diab==1 & age_onset>={T1DM_CO})') \
-    [["eid", "age_onset"]]
+# Restrictive variables
+# -----
+
+# Perform filtering
+dl.filter_vars(AGE_CO, T1DM_CO)
+
+# Extract filtered series
+age, mp, hrt, age_onset = dl.age, dl.mp, dl.hrt, dl.age_onset
 
 # %%
 # =============================================================================
@@ -120,17 +121,27 @@ age_onset = age_onset \
 # Status
 print(f"Building regressor matrix with contrast [{CTRS}]")
 
-# Choose variables
+# Merge IVs and put previously defined exclusions into action (through merge)
 regressors = functools.reduce(
         lambda left, right: pd.merge(left, right, on="eid", how="inner"),
-        [diab, age, sex, college, age_onset]
+        [age, sex, college, diab, mp, hrt, htn, age_onset, duration]
         ) \
-        .drop("age_onset", axis=1)
+        .drop(["mp", "hrt", "age_onset"], axis=1)
 
 # If contrast is age
 if CTRS == "age":
     # Exclude subjects with T2DM
     regressors = regressors.query("diab == 0")
+
+# If contrast is sex and we want to separate across age
+if CTRS == "sex":
+    # Exclude subjects with T2DM OR subjects without T2DM (toggle switch)
+    regressors = regressors.query("diab == 0")
+
+# Optional: stratify per sex
+if STRAT_SEX:
+    # Include subjects of one sex only
+    regressors = regressors.query(f"sex == {SEX}")
 
 # Inner merge regressors with a gm column to make sure all included subjects have data
 y = data['Volume of grey matter (normalised for head size)'].rename("feat").reset_index()
@@ -152,37 +163,38 @@ regressors_y = y.merge(regressors, on="eid", how="inner")
 regressors_clean = regressors_y.drop(["feat"], axis=1)
 
 # Save full regressor matrix
-regressors_clean.to_csv(OUTDIR + f"regressors/pub_meta_volume_full_regressors_{CTRS}.csv")
+regressors_clean.to_csv(OUTDIR + f"regressors/pub_meta_volume_full_regressors_{CTRS}{EXTRA}.csv") # TODO
 
 if CTRS == "age":
 
-    # Interactions among independent variables
-    var_dict = {
-            "sex": "disc",
-            "college": "disc",
-            }
+    # # Interactions among independent variables
+    # var_dict = {
+    #         "sex": "disc",
+    #         "college": "disc",
+    #         }
 
-    for name, type_ in var_dict.items():
+    # for name, type_ in var_dict.items():
 
-        check_covariance(
-                regressors_clean,
-                var1=name,
-                var2="age",
-                type1=type_,
-                type2="cont",
-                save=True,
-                prefix=OUTDIR + "covariance/pub_meta_volume_covar"
-                )
+    #     check_covariance(
+    #             regressors_clean,
+    #             var1=name,
+    #             var2="age",
+    #             type1=type_,
+    #             type2="cont",
+    #             save=True,
+    #             prefix=OUTDIR + "covariance/pub_meta_volume_covar"
+    #             )
 
-        plt.close("all")
+    #     plt.close("all")
 
     if RLD == False:
+
         # Match
         regressors_matched = match_cont(
                 df=regressors_clean,
-                main_var="age",
-                vars_to_match=["sex", "college"],
-                N=1,
+                main_vars=["age"],
+                vars_to_match=["sex", "college", "htn"],
+                value=3,
                 random_state=1
                 )
 
@@ -210,18 +222,53 @@ if CTRS == "diab":
         plt.close("all")
 
     if RLD == False:
+
         # Match
-        regressors_matched = match_mah(
+        regressors_matched = match(
+            df=regressors_clean,
+            main_vars=["diab"],
+            vars_to_match=["age", "sex", "college", "htn"],
+            random_state=1
+            )
+
+
+if CTRS == "sex":
+
+    # Interactions among independent variables
+    var_dict = {
+            "age": "cont",
+            "college": "disc",
+            "htn": "disc"
+            }
+
+    for name, type_ in var_dict.items():
+
+        check_covariance(
+                regressors_clean,
+                var1="sex",
+                var2=name,
+                type1="disc",
+                type2=type_,
+                save=True,
+                prefix=OUTDIR + "covariance/pub_meta_volume_covar"
+                )
+
+        plt.close("all")
+
+    if RLD == False:
+        # Match
+        regressors_matched = match(
                 df=regressors_clean,
-                main_var="diab",
-                vars_to_match=["age", "sex", "college"],
-                N=1,
+                main_vars=["sex"],
+                vars_to_match=["age", "college", "htn"],
                 random_state=1
                 )
 
+
+
 if RLD == False:
     # Save matched regressors matrix
-    regressors_matched.to_csv(OUTDIR + f"regressors/pub_meta_volume_matched_regressors_{CTRS}.csv")
+    regressors_matched.to_csv(OUTDIR + f"regressors/pub_meta_volume_matched_regressors_{CTRS}{EXTRA}.csv") # TODO
 
 # %%
 # =============================================================================
@@ -233,7 +280,7 @@ print(f"Extracting volume values with contrast [{CTRS}] at parcellation [{PARC}]
 
 # Load regressors
 regressors_matched = pd.read_csv(
-        OUTDIR + f"regressors/pub_meta_volume_matched_regressors_{CTRS}.csv"
+        OUTDIR + f"regressors/pub_meta_volume_matched_regressors_{CTRS}{EXTRA}.csv" # TODO
         )
 
 # 46 parcellation
@@ -311,7 +358,7 @@ if PARC == 139:
 # =============================================================================
 
 # Status
-print(f"Fitting models for contrast [{CTRS}] at parcellation [{PARC}]")
+print(f"Fitting models for contrast [{CTRS}] at parcellation [{PARC}]\n")
 
 # Dictionary to store stats
 feat_stats = {}
@@ -322,18 +369,22 @@ for i, feat in tqdm(enumerate(features), total=len(features), desc="Models fitte
     # Prep
     # ----
     # Extract current feature
-    sdf = df[["eid", "age", "diab", "sex", "college", f"{feat}"]]
+    sdf = df[["eid", "age", "diab", "sex", "college", "htn", f"{feat}"]]
 
     # Get sample sizes
-    sample_sizes = sdf.groupby("diab")["eid"].count()
+    sample_sizes = sdf.groupby("sex" if CTRS == "sex" else "diab")["eid"].count()
 
     # Fit
     # -----
     # Formula
     if CTRS == "age":
-        formula = f"{feat} ~ age + C(sex) + C(college)"
+        formula = f"{feat} ~ age + C(sex) + C(college) + C(htn)"
+
     if CTRS == "diab":
-        formula = f"{feat} ~ C(diab) + age + C(sex) + C(college)"
+        formula = f"{feat} ~ C(diab) + age + C(sex) + C(college) + C(htn)"
+
+    if CTRS == "sex":
+        formula = f"{feat} ~ age + C(sex) + C(college) + C(htn)"
 
     # Fit model
     model = smf.ols(formula, data=sdf)
@@ -344,15 +395,16 @@ for i, feat in tqdm(enumerate(features), total=len(features), desc="Models fitte
 
     # Save detailed stats report
     with open(OUTDIR + f"stats_misc/pub_meta_volume_regression_table_{feat}" \
-              f"_{CTRS}_{PARC}.html", "w") as f:
+              f"_{CTRS}_{PARC}{EXTRA}.html", "w") as f:
         f.write(results.summary().as_html())
+    # print(results.summary())
 
     # Check assumptions
     check_assumptions(
             results,
             sdf,
             prefix=OUTDIR + \
-            f"stats_misc/pub_meta_volume_stats_assumptions_{feat}_{CTRS}_{PARC}"
+            f"stats_misc/pub_meta_volume_stats_assumptions_{feat}_{CTRS}_{PARC}{EXTRA}"
             )
 
     # Plot across age
@@ -372,13 +424,19 @@ for i, feat in tqdm(enumerate(features), total=len(features), desc="Models fitte
                      marker="o", linewidth=2, markersize=6,
                      err_kws={"capsize": 3, "capthick": 2, "elinewidth": 2})
         plt.tight_layout()
-        plt.savefig(OUTDIR + f"stats_misc/pub_meta_volume_age-diab-plot_{feat}_{PARC}.pdf")
+        plt.savefig(OUTDIR + f"stats_misc/pub_meta_volume_age-diab-plot_{feat}_{PARC}{EXTRA}.pdf")
         plt.close()
 
     # Save results
     # -------
     # Normalization factor
-    norm_fact = sdf.query('diab==0')[feat].mean()/100
+    if CTRS in ["age", "diab"]:
+        norm_fact = sdf.query('diab==0')[feat].mean()/100
+
+    elif CTRS == "sex":
+        norm_fact = sdf.query('sex==0')[feat].mean()/100
+    else:
+        print("Unknown contrast for norm_fact")
 
     # Get relevant key for regressor
     rel_key = [key for key in results.conf_int().index.to_list() \
@@ -411,4 +469,4 @@ df_out = pd.DataFrame.from_dict(
                                                    method="bonf")[1]})
 
 # Save outputs
-df_out.to_csv(OUTDIR + f"stats/pub_meta_volume_stats_{CTRS}_{PARC}.csv")
+df_out.to_csv(OUTDIR + f"stats/pub_meta_volume_stats_{CTRS}_{PARC}{EXTRA}.csv")

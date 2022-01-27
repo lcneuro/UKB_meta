@@ -35,9 +35,10 @@ OUTDIR = HOMEDIR + "results/neurofunction/"
 # Inputs
 MDL = "ALFF"
 PTHR = 0.05
+BATCH = 8
 UC = 12
 GM_THR = 0.5  # GM threshold
-cut_coords = (12, 8, 16)
+cut_coords = (-2, 11, 16)
 
 #raise
 
@@ -98,10 +99,10 @@ p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
 # UKB
 # =============================================================================
 
-suffix1 = f"batch7_GM_{GM_THR}_contrast_age"
-suffix2 = f"batch7_GM_{GM_THR}_contrast_diab"
+suffix1 = f"batch{BATCH}_GM_{GM_THR}_contrast_age"
+suffix2 = f"batch{BATCH}_GM_{GM_THR}_contrast_diab"
 cmap = 'PiYG_r'
-vm = 5
+vm = 3
 
 # Load images
 back = image.load_img(OUTDIR \
@@ -236,8 +237,8 @@ plt.close("all")
 #print("Exporting thresholded maps")
 #
 ## UKB
-#suffix1 = f"batch7_GM_{GM_THR}_contrast_age"
-#suffix2 = f"batch7_GM_{GM_THR}_contrast_diab"
+#suffix1 = f"batch{BATCH}_GM_{GM_THR}_contrast_age"
+#suffix2 = f"batch{BATCH}_GM_{GM_THR}_contrast_diab"
 #
 #img1 = image.load_img(OUTDIR \
 #               + f'stats/pub_meta_neurofunction_zmap_{MDL}_{suffix1}.nii')

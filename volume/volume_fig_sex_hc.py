@@ -21,6 +21,9 @@ from IPython import get_ipython
 from tqdm import tqdm
 
 get_ipython().run_line_magic('cd', '..')
+from helpers.regression_helpers import check_covariance, match, match_cont, \
+check_assumptions, detrender
+from helpers.data_loader import DataLoader
 from helpers.plotting_style import plot_pars, plot_funcs
 get_ipython().run_line_magic('cd', 'volume')
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -33,16 +36,17 @@ HOMEDIR = os.path.abspath(os.path.join(__file__, "../../../")) + "/"
 SRCDIR = HOMEDIR + "results/volume/stats/"
 OUTDIR = HOMEDIR + "results/volume/"
 
+CTRS = "sex"
+EXTRA = "_sex_hc"
+
+# <><><><><><><><>
 raise
+# <><><><><><><><>
+
 
 # %%
-# Settings
-contrast_A="diab"
-contrast_B="age"
-
 # Open data
-A = pd.read_csv(SRCDIR + f"pub_meta_volume_stats_{contrast_A}_46.csv", index_col=0) #.iloc[-10:, :].reset_index() #TODO
-B = pd.read_csv(SRCDIR + f"pub_meta_volume_stats_{contrast_B}_46.csv", index_col=0) #.iloc[-10:, :].reset_index()
+A = pd.read_csv(SRCDIR + f"pub_meta_volume_stats_{CTRS}_46.csv", index_col=0) #.iloc[-10:, :].reset_index() #TODO
 
 # Nuemrify interval data (from str to list of floats)
 numerify_cols = lambda df: df.assign(
@@ -53,25 +57,17 @@ numerify_cols = lambda df: df.assign(
     lambda item: [int(val) for val in item[1:-1].split(", ") if val not in [" ", ""]])
     })
 
-A = numerify_cols(A)
-B = numerify_cols(B)
+df = numerify_cols(A)
 
 # Add contraast columns. DO not edit these. They are used downstream!
-A["contrast"] = contrast_A
-B["contrast"] = contrast_B
-
-# Normalize age effects to t2dm
-B["beta"] = B["beta"]*1
-
-# Merge
-df = pd.concat([B, A])
+df["contrast"] = CTRS
 
 # Make a column with unique index
 df["index"] = np.arange(len(df))
 
 # Reorder per value
 order = df \
-    .query(f'contrast == "{contrast_B}"') \
+    .query(f'contrast == "{CTRS}"') \
     .sort_values(by="beta")["index"] \
     .pipe(lambda df:
         pd.concat([df, df+df.shape[0]], axis=0)) \
@@ -81,12 +77,9 @@ order = df \
                 "ref": np.arange(df.shape[0])
                 }))
 
-df = df.merge(order, on="index", how="inner").sort_values(by="ref")
+df = df.merge(order, on="index", how="inner").sort_values(by="ref").reset_index(drop=True)
 
-# For later use
-sub_dfs = [df.query(f'contrast == "{contrast_B}"').reset_index(drop=True),
-           df.query(f'contrast == "{contrast_A}"').reset_index(drop=True)]
-
+# %%
 # =============================================================================
 # Plot
 # =============================================================================
@@ -96,15 +89,9 @@ fs, lw = plot_pars
 p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
 
 # Colors
-colors_A = colors_from_values(
+colors = colors_from_values(
         np.array(list(-A["beta"]) + [A["beta"].min(), A["beta"].max()]),
-        "seismic_r")[:-2]
-
-colors_B = colors_from_values(
-        np.array(list(-B["beta"]) + [B["beta"].min() + 0, B["beta"].max()]),
-        "PiYG")[:-2]
-
-colors = np.concatenate((colors_B, colors_A), axis=0)
+        "Greys")[:-2]
 
 colors_dict = {i: colors[i] for i in range(len(colors))}
 
@@ -113,7 +100,7 @@ df["label"] = df["label"].str.replace("_", " ")
 
 # Plotting
 f = sns.FacetGrid(data=df, col="contrast", height=7.25, aspect=1,
-                  col_order=[contrast_B, contrast_A], sharex=False, despine=False) \
+                  sharex=False, despine=False) \
     .map_dataframe(sns.barplot, y="label", x="beta",
                    palette=colors_dict, hue="index", dodge=False,
                    linewidth=lw*0.5, edgecolor="black",
@@ -125,85 +112,74 @@ f = sns.FacetGrid(data=df, col="contrast", height=7.25, aspect=1,
 # For both axes
 # ------
 
+# Sample sizes
+ss = df["sample_sizes"][0]
+
 # Axis titles
-ss = [A["sample_sizes"][0], B["sample_sizes"][0]]
-title_texts = [
-        f"Age (HC only)\nN$_{{}}$={ss[1][0]:,}", \
-        f"T2DM (T2DM+ vs. HC)\nN$_{{T2DM+}}$={ss[0][1]:,}, " \
-        f"N$_{{HC}}$={ss[0][0]:,}",
-        ]
+title_text = \
+        f"Sex (HC only)\nN$_{{Male}}$={ss[1]:,}, " \
+        f"N$_{{Female}}$={ss[0]:,}"
 
 
 # Loop through
-for i, ax in enumerate(f.axes[0]):
+ax = f.axes[0][0]
 
-    # Unpack
-    sub_df = sub_dfs[i]
+# Remove title
+ax.set_title(title_text)
 
-    # Remove title
-    ax.set_title(title_texts[i])
+# Add grid
+ax.grid(zorder=0, linewidth=0.25*lw)
 
-    # Add grid
-    ax.grid(zorder=0, linewidth=0.25*lw)
+# Add x=0 axvline
+ax.axvline(x=0, linewidth=0.75*lw, color="black")
 
-    # Add x=0 axvline
-    ax.axvline(x=0, linewidth=0.75*lw, color="black")
+# Add in errobars
+for _, item in tqdm(enumerate(df.iterrows()), total=len(df)):
 
-    # Add in errobars
-    for _, item in tqdm(enumerate(sub_df.iterrows()), total=len(sub_df)):
+    y = item[0]
+    ss, p, x, conf_int  = item[1][["sample_sizes", "pval", "beta", "conf_int"]]
 
-        y = item[0]
-        ss, p, x, conf_int  = item[1][["sample_sizes", "pval", "beta", "conf_int"]]
+    conf_dist = abs(x - np.array(conf_int))[:, None]
 
-        conf_dist = abs(x - np.array(conf_int))[:, None]
+    ax.errorbar(x, y, xerr=conf_dist, capsize=1.2*lw, capthick=lw*0.5,
+                 elinewidth=lw*0.5, color="black", zorder=100)
 
-        ax.errorbar(x, y, xerr=conf_dist, capsize=1.2*lw, capthick=lw*0.5,
-                     elinewidth=lw*0.5, color="black", zorder=100)
+#    text = pformat(p) + p2star(p ) if PRINT_P \
+#            else p2star(p)
+#    ha = "left"
+#    x = 3.2
 
-    #    text = pformat(p) + p2star(p ) if PRINT_P \
-    #            else p2star(p)
-    #    ha = "left"
-    #    x = 3.2
+    text = p2star(p)
 
-        text = p2star(p)
+    ha = "right" if x < 0 else "left"
 
-        ha = "right" if x < 0 else "left"
+    xoffset = 0 if x == 0 else 0
+    xtext = min(conf_int) + xoffset if x < 0 else max(conf_int) - xoffset
+    ytext = y + 0.3
 
-        xoffset = 0.15 if x == 0 else 0.02
-        xtext = min(conf_int) + xoffset if x < 0 else max(conf_int) - xoffset
-        ytext = y + 0.3
+    ax.annotate("   " + text + "   ", xy=[xtext, ytext],
+                 ha=ha, va="center", fontsize=8*fs, fontweight="bold")
 
-        ax.annotate("   " + text + "   ", xy=[xtext, ytext],
-                     ha=ha, va="center", fontsize=8*fs, fontweight="bold")
+# Format bars
+for bar in ax.patches:
+    w=0.7
+    y = bar.get_y()
+    bar.set_y(y + (0.8 - w)/2)
+    bar.set_height(w)
 
-    # Format bars
-    for bar in ax.patches:
-        w=0.7
-        y = bar.get_y()
-        bar.set_y(y + (0.8 - w)/2)
-        bar.set_height(w)
-
-    # Add spines
-    for sp in ['bottom', 'top', 'right', 'left']:
-        ax.spines[sp].set_linewidth(0.75*lw)
-        ax.spines[sp].set_color("black")
+# Add spines d
+for sp in ['bottom', 'top', 'right', 'left']:
+    ax.spines[sp].set_linewidth(0.75*lw)
+    ax.spines[sp].set_color("black")
 
 
 # Axis specific formatting
 # ========
 
-# Age
-# -----
 ax = f.axes[0][0]
+ax.set_xlim([-14, 6])
 ax.spines['right'].set_visible(False)
-ax.set_xlim([-1.3, 0.70])
-ax.set_xlabel("Percentage change in\ngray matter volume\nacross age (% per year)")
-
-# T2DM
-# ----
-ax = f.axes[0][1]
-ax.set_xlim([-10, 5])
-ax.set_xlabel("Percentage difference in\ngray matter volume\nT2DM+ vs. HC (%)")
+ax.set_xlabel("Percentage difference in\ngray matter volume\nMale vs Female (%)")
 
 # Figure formatting
 # ------
@@ -212,7 +188,7 @@ ax.set_xlabel("Percentage difference in\ngray matter volume\nT2DM+ vs. HC (%)")
 plt.gcf().set_size_inches(7.25, 9)
 
 # Add common suptitle
-plt.suptitle("Region Specific Gray Matter Volume Changes\n Associated with Age and T2DM: " \
+plt.suptitle("Region Specific Gray Matter Volume Changes\n Associated with Sex: " \
              "UK Biobank Dataset", va="top", y=0.985)
 
 ## Add common x label
@@ -221,7 +197,7 @@ plt.suptitle("Region Specific Gray Matter Volume Changes\n Associated with Age a
 
 
 plt.tight_layout(rect=[0, 0.00, 1, 0.995])
-plt.savefig(OUTDIR + "figures/JAMA_meta_figure_volume.pdf",
+plt.savefig(OUTDIR + f"figures/JAMA_meta_figure_volume{EXTRA}.pdf",
             transparent=True)
 plt.close("all")
 

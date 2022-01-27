@@ -35,33 +35,33 @@ SRCDIR = HOMEDIR + "data/"
 OUTDIR = HOMEDIR + "results/cognition/"
 
 # Inputs
-# Case specific values
-cases = ["age", "diab", "meta"]
-titles = [
-        "Age: UK Biobank Dataset (HC only)",
-        "T2DM: UK Biobank Dataset (T2DM+ vs. HC)",
-        "T2DM: Meta-Analysis of Published Literature (T2DM+ vs. HC)",
-        ]
-ylabeltexts = [
-        "Percentage change in cognitive\nperformance across age (% per year)",
-        "Percentage difference in cognitive\nperformance T2DM+ vs. HC (%)",
-        "Standardized mean difference\nT2DM+ vs. HC (Cohen's d)"
-        ]
-colors = ["PiYG", "YlGnBu", "Purples"]
-ylims = [[-2.5, 0.3], [-23.0, 4.5], [-0.75, 0.2]]
-sfs = [1.5e4, 2e3, 0.4]  # Marker size factors
-sfscf = [5000, 2000, 25]  # Marker size scale factors
-sdxo = [0.76, 0.79, 0.94]  # x axis offset of scale info
-sfscf2 = [10000, 1000, 10]  # Marker size scale factors
-sdxo2 = [0.76, 0.75, 0.9]  # x axis offset of scale info
-cms = [20, 4, 1]  # Colormap scaling to distort - gradient
-cmo = [4.5, 2, 1]  # Colormap offset - intensity
-textpads = [-0.05, 1, 0.05]  # Padding for text along y axis
-xtickrots = [0, 0, 45]  # Rotation of xticks
-xtickvas = ["top", "top", "top"]  # Vertical alignment for xticks
-xtickpads = [0, 0, 0]  # Paddong fo xticks
+cases = ["sex"]
+EXTRA = "_sex_hc"
 
-#raise
+# Case specific values
+titles = [
+        "Sex: UK Biobank Dataset (HC only)",
+        ]
+
+ylabeltexts = [
+        "Percentage difference in cognitive\nperformance Male vs. Female (%)",
+        ]
+colors = ["RdBu_r"]
+ylims = [[-6, 10]]
+sfs = [1.5e5]  # Marker size factors
+sfscf = [15000]  # Marker size scale factors
+sdxo = [0.76]  # x axis offset of scale info
+cms = [2]  # Colormap scaling to distort - gradient
+cmo = [-8]  # Colormap offset - intensity
+textpads = [2]  # Padding for text along y axis
+xtickrots = [0]  # Rotation of xticks
+xtickvas = ["top"]  # Vertical alignment for xticks
+xtickpads = [0]  # Paddong fo xticks
+
+# <><><><><><><><>
+# raise
+# <><><><><><><><>
+
 
 # %%
 
@@ -81,7 +81,7 @@ for case in cases:
             )
 
     # Transfomrations specific to case
-    if case in ["age", "diab"]:
+    if case in ["sex"]:
 
             # Cast strings to float arrays
             df["sample_sizes"] = \
@@ -89,19 +89,6 @@ for case in cases:
             df["conf_int"] = \
                 df["conf_int"].apply(lambda item:
                     np.array([float(val) for val in item[1:-1].split(" ") if len(val) > 0])
-                )
-
-    elif case in ["meta"]:
-
-        # Transform df
-        df = df \
-            .reset_index() \
-            .pipe(lambda df:
-                df.assign(**{
-                    "label": df["Cognitive Domain"],
-                    "conf_int": [[row[1]["LB"], row[1]["UB"]] \
-                                 for row in df.iterrows()]
-                            })
                 )
 
     else:
@@ -128,8 +115,8 @@ fs, lw = plot_pars
 p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
 
 # Figure
-f = plt.figure(figsize=(7.25, 9))
-plt.suptitle("Domain Specific Cognitive Deficits Associated with Age and T2DM\n")
+f = plt.figure(figsize=(7.25, 3))
+plt.suptitle("Domain Specific Cognitive Deficits Associated with Sex\n")
 
 # Panels A & B
 # ------
@@ -148,10 +135,10 @@ for c, case in enumerate(cases):
 #    df = df.sort_values(by="label", ignore_index=True)
 
     # Pick subplot
-    plt.subplot(len(cases), 1, c+1)
+    # plt.subplot(len(cases), 1, 1)
 
     # Populate plot
-    if case in ["age", "diab"]:
+    if case in ["sex"]:
 
         # Colors
         colors_all = colors_from_values(
@@ -200,63 +187,6 @@ for c, case in enumerate(cases):
                          ha="center", va=va, fontweight="bold",
                          rotation=0)
 
-    elif case in ["meta"]:
-
-        # Colors
-        colors_all = colors_from_values(
-            np.array(list(-df["EFFS"])*cms[c] + [df["EFFS"].min() + cmo[c],
-                     df["EFFS"].max()*cms[c]]),
-            colors[c])[:-2]
-
-
-        for i, item in enumerate(df.iterrows()):
-
-            # Extract data
-            x = item[0]
-            y, conf_int, K, Q, I2, p  = \
-                item[1][["EFFS", "conf_int", "K", "Q", "I2", "p"]]
-
-            conf_dist = abs(y - np.array(conf_int))[:, None]
-
-            # Blob for representing value and sample size
-            plt.scatter(x=x, y=y, s=K**2/sfs[c], color=colors_all[i])
-
-            # Plot center of estimate
-            plt.scatter(x=x, y=y, s=15*lw, color="k")
-
-            # Errorbars
-            plt.errorbar(x, y, yerr=conf_dist, capsize=4*lw, capthick=0.75*lw,
-                         elinewidth=0.75*lw, color="black")
-
-        #    # Annotate stats as text
-        #    text = \
-        #        f"K={K}" \
-        #        f"\nQ={Q}" \
-        #        f"\n$\mathbf{{I^2}}$={I2}" \
-        #        f"\n{pformat(p)}" + p2star(p)
-        #
-
-        #    f"\n {pformat(p)}" + p2star(p) \
-        #        +  f"\n$\mathbf{{N^{2}$={ss[1]}\n$\mathbf{{N_{{ctrl}}}}$={ss[0]}"
-
-        #    text_y = 0.2 # 0.5 if max(conf_int) < 0 else max(conf_int) + 0.5
-        #    va = "bottom" # "bottom" if y > 0 else "top"
-        #    plt.annotate(text, xy=[x, text_y],
-        #                 fontsize=6.5*fs, ha="center", va=va)
-
-
-            # Add statistical asterisks
-            text = p2star(p)
-            text_x = x + 0.00
-            if y < 0:
-                text_y = min(min(conf_int), y-K**2/sfs[c]/1.5e4) - textpads[c]
-            else:
-                text_y = max(max(conf_int), y-K**2/sfs[c]/3.4e-1) + textpads[c]
-            va = "top" if y < 0 else "bottom"
-            plt.annotate(text, xy=[text_x, text_y], fontsize=8*fs,
-                         ha="center", va=va, fontweight="bold",
-                         rotation=0)
-
     # Format
     # Add title
     plt.title(titles[c])
@@ -276,7 +206,7 @@ for c, case in enumerate(cases):
     # Ticks/lines
     plt.axhline(0, linewidth=0.75*lw, color="black", dashes=[4, 4])
     plt.xticks(ticks=np.arange(len(df)), labels=df["label"],
-               rotation=xtickrots[c], va=xtickvas[c])
+                rotation=xtickrots[c], va=xtickvas[c])
     plt.gca().tick_params(axis="x", pad=xtickpads[c])
     plt.gca().xaxis.tick_bottom()
     plt.gca().yaxis.tick_left()
@@ -296,7 +226,7 @@ for c, case in enumerate(cases):
 #                color="lightgray")
 
     plt.annotate(text=f"Scale:\n{'N' if c<2 else 'K'}={sfscf[c]}",
-                 xy=[len(df)-sdxo[c], ylims[c][0] * 0.88], va="center", ha="center")
+                 xy=[len(df)-sdxo[c], ylims[c][0] * 0.7], va="center", ha="center")
 
 ## Caption info, !: not quite correct, cases with scores are more complex than
 ## just > 0. FOr some it's >=0, and others it's >0
@@ -343,7 +273,7 @@ for c, case in enumerate(cases):
 # Save
 # ------
 plt.tight_layout(h_pad=2)
-plt.savefig(OUTDIR + "figures/JAMA_meta_figure_cognition.pdf",
+plt.savefig(OUTDIR + f"figures/JAMA_meta_figure_cognition{EXTRA}.pdf",
             transparent=True)
 
-plt.close()
+# plt.close()
