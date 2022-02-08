@@ -39,7 +39,7 @@ OUTDIR = HOMEDIR + "results/volume/"
 EXTRA = "_sex"
 
 # <><><><><><><><>
-raise
+# raise
 # <><><><><><><><>
 
 # %%
@@ -122,7 +122,7 @@ f = sns.FacetGrid(data=df, col="contrast", height=7.25, aspect=1,
                    linewidth=lw*0.5, edgecolor="black",
                    palette=sns.color_palette(["indianred", "dodgerblue"]),
                    zorder=3, orient="h") \
-    .add_legend(bbox_to_anchor=(0.17, 0.88), bbox_transform=plt.gcf().transFigure)
+    .add_legend(bbox_to_anchor=(0.2, 0.88), bbox_transform=plt.gcf().transFigure)
 
 # Formatting
 # =======
@@ -138,6 +138,10 @@ title_texts = [
         f"T2DM (T2DM+ vs HC)\nN$_{{Female}}$={ss[2][0]:,}, " \
         f"N$_{{Male}}$={ss[3][0]:,}"
         ]
+
+# Legend labels
+for t, l in zip(f._legend.texts, ["Females", "Males"]):
+    t.set_text(l)
 
 # Loop through
 for i, (cr, st) in enumerate(zip(crs, sts)):
@@ -223,8 +227,8 @@ ax.set_xlabel("Percentage difference in\ngray matter volume\nT2DM+ vs. HC (%)")
 plt.gcf().set_size_inches(7.25, 9)
 
 # Add common suptitle
-plt.suptitle("Region Specific Gray Matter Volume Changes\n Associated with Age and T2DM," \
-             "Grouped per Sex: UK Biobank Dataset", va="top", y=0.985)
+plt.suptitle("Region Specific Gray Matter Volume Changes\Associated with Age and T2DM,\n" \
+             "Quantified Separately for Sexes, UK Biobank", va="top", y=0.985)
 
 ## Add common x label
 #plt.gcf().text(0.6, 0.03, "Change In Gray Matter Volume (%)", ha='center',

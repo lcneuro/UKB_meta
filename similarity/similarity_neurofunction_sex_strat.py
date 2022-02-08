@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Mar 16 16:02:05 2021
+Created on Sat Feb 20 12:57:25 2021
 
 @author: botond
 
@@ -9,7 +9,7 @@ The goal is to quantify similarity along the following factors:
 
 T2DM - aging
 F - M
-(Volumetric only
+(Neurofunction only)
 
 
 """
@@ -43,18 +43,18 @@ SRCDIR = HOMEDIR + "results/"
 OUTDIR = HOMEDIR + "results/similarity/"
 
 PC = 46  # Parcellation version (46 or 139)
+gm_thr = 0.5  # GM threshold
 CORRMET = "pearson"
 EXTRA = "_mean"
 
 contrasts = ["age", "diab"]
-modalities = ["volume", "neurofunction", "neuroquery"]
+strats = ["F", "M"]
+modalities = ["neurofunction"]
+vol_field = "beta"  # Numerical field to consider from neurofunction data
 ds_extra = "alff_batch8_GM_0.5"
-vol_field = "beta"  # Numerical field to consider from volumetric data
-
-gm_thr = 0.5  # GM threshold
 
 # <><><><><><><><>
-raise
+# raise
 # <><><><><><><><>
 
 # %%
@@ -72,39 +72,18 @@ print("Loading data.")
 data_list = {}  # Final list for deriving similarities
 raw_list = {}  # Temp list for storing raw functional images
 
-# Import UKB atrophy
+# Import UKB functional
 # -----
-for ct in contrasts:
-    data_list[f"volume_{ct}"] = \
-        pd \
-            .read_csv(SRCDIR + f"volume/stats/pub_meta_volume_stats_{ct}_{PC}.csv",
-                      index_col=None) \
-            .pipe(lambda df:
-                df.assign(**{
-                        "label": df["label"],
-                        "value": df[vol_field]
-                        })) \
-            [["label", "value"]]
-
-#"label": df["label"].apply(lambda item: (" ").join(item.split("_"))),
-
-# Import functional data
-# -----
-# All possible combos, some do not exist
-combos = itertools.product(contrasts, modalities)
 
 # Load the ones that exist
-for combo in combos:
-    ct, mod = combo
-    if mod == "neurofunction":
-        ext = ds_extra + "_"
-    else:
-        ext = ""
+for ct, st in itertools.product(contrasts, strats):
 
-    filename = f"pub_meta_{mod}_zmap_{ext}contrast_{ct}.nii"
+    print(ct, st)
+
+    filename = f"pub_meta_neurofunction_zmap_{ds_extra}_contrast_{ct}_{st}.nii"
     try:
-        img = image.load_img(SRCDIR + f"{mod}/stats/" + filename)
-        raw_list[f"{mod}_{ct}"] = img
+        img = image.load_img(SRCDIR + f"neurofunction/stats/" + filename)
+        raw_list[f"neurofunction_{ct}_{st}"] = img
         print(f"Loaded {filename}")
     except Exception as e:
         pass
@@ -257,12 +236,10 @@ keys = list(data_list.keys())
 
 # Custom order
 keys = [
-     'volume_age',
-     'volume_diab',
-     'neurofunction_age',
-     'neurofunction_diab',
-     'neuroquery_age',
-     'neuroquery_diab'
+     'neurofunction_age_F',
+     'neurofunction_age_M',
+     'neurofunction_diab_F',
+     'neurofunction_diab_M',
      ]
 
 # Helper functions
@@ -327,14 +304,16 @@ annot_df = pd.DataFrame(np.array(annot_text).reshape(corr_matrix.shape))
 plt.figure(figsize=(4.8, 4.2))
 #plt.rcParams['xtick.labelsize']=16
 #plt.rcParams['ytick.labelsize']=16
-plt.title(f"Correlation Based Similarities among Effects and Datasets")
+plt.title(f"Correlation Based Similarities between\nNeurofunctional " \
+          "Effects Associated with\nAge and T2DM, Quantified Separately for Sexes",
+          )
 g = sns.heatmap(corr_matrix, vmin=-1, vmax=1, cmap="seismic", annot=annot_df,
             fmt="", linewidth=1, linecolor="k",
             annot_kws={"fontsize": 8*fs})
 g.figure.axes[-1].tick_params(labelsize=6*fs)
 plt.xticks(rotation=45, ha="right");
 plt.tight_layout()
-plt.savefig(OUTDIR + f"figures/corr_matrix_{PC}{EXTRA}.pdf")
+plt.savefig(OUTDIR + f"figures/corr_matrix_{PC}_neurofunction_strat{EXTRA}.pdf")
 
 
 
@@ -349,12 +328,10 @@ plt.savefig(OUTDIR + f"figures/corr_matrix_{PC}{EXTRA}.pdf")
 # %%
 # Scatterplot
 '''
-'ukb_volume_age'
-'ukb_func_alff_age'
-'neuroquery_mix_age'
-'ukb_volume_diabetes'
-'ukb_func_alff_diabetes'
-'neuroquery_mix_diabetes'
+'ukb_neurofunction_age_F'
+'ukb_neurofunction_age_M'
+'ukb_neurofunction_diab_F'
+'ukb_neurofunction_diab_M'
 '''
 
 df.columns = list(map(lambda x: x.replace(" ", "_"), list(df.columns)))
@@ -363,20 +340,17 @@ combos = list(itertools.combinations(keys, 2))
 
 for combo in tqdm(combos):
     a, b = combo
-
+    # plt.figure(figsize=(3.5, 3.5))
+    # plt.scatter(df[a], df[b])
+    # for i in range(len(df)):
+    #     plt.annotate(df.loc[i, "label"], xy=[df.loc[i, a], df.loc[i, b]])
     sns.lmplot(data=df, x=a, y=b, height=3.5,
                line_kws={"linewidth": 2, "zorder": 2},
                scatter_kws={"linewidth": 0.7, "edgecolor": "k", "zorder": 3})
-
-    # plt.figure(figsize=(3.5, 3.5))
-    # plt.scatter(df[a], df[b ])
-    # for i in range(len(df)):
-    #     plt.annotate(df.loc[i, "label"], xy=[df.loc[i, a], df.loc[i, b]])
-
     plt.xlabel(a.replace("_", " "))
     plt.ylabel(b.replace("_", " "))
     plt.tight_layout()
-    plt.savefig(OUTDIR + f"scatterplots/scatter_{PC}{EXTRA}_{a}_{b}.pdf")
+    plt.savefig(OUTDIR + f"scatterplots/scatter_{PC}_strat{EXTRA}_{a}_{b}.pdf")
     plt.close("all")
 
 plt.close("all")

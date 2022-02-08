@@ -45,10 +45,10 @@ CTRS = "diab"  # Contrast: diab or age
 T1DM_CO = 40  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
 AGE_CO = 50  # Age cutoff (related to T1DM_CO) to avoid T2DM low duration subjects
-STRAT_SEX = 1 # Stratify sex or not #TODO: need to adjust detrending accordinlgy
+STRAT_SEX = 0 # Stratify sex or not #TODO: need to adjust detrending accordinlgy
 SEX = 0  # If stratifying per sex, which sex to keep
 
-EXTRA = "_F"  # Extra suffix for saved files
+EXTRA = ""  # Extra suffix for saved files
 RLD = False  # Reload regressor matrices instead of computing them again
 
 print("\nRELOADING REGRESSORS!\n") if RLD else ...

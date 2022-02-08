@@ -40,7 +40,7 @@ CTRS = "sex"
 EXTRA = "_sex_hc"
 
 # <><><><><><><><>
-raise
+# raise
 # <><><><><><><><>
 
 
@@ -115,17 +115,8 @@ f = sns.FacetGrid(data=df, col="contrast", height=7.25, aspect=1,
 # Sample sizes
 ss = df["sample_sizes"][0]
 
-# Axis titles
-title_text = \
-        f"Sex (HC only)\nN$_{{Male}}$={ss[1]:,}, " \
-        f"N$_{{Female}}$={ss[0]:,}"
-
-
 # Loop through
 ax = f.axes[0][0]
-
-# Remove title
-ax.set_title(title_text)
 
 # Add grid
 ax.grid(zorder=0, linewidth=0.25*lw)
@@ -188,8 +179,9 @@ ax.set_xlabel("Percentage difference in\ngray matter volume\nMale vs Female (%)"
 plt.gcf().set_size_inches(7.25, 9)
 
 # Add common suptitle
-plt.suptitle("Region Specific Gray Matter Volume Changes\n Associated with Sex: " \
-             "UK Biobank Dataset", va="top", y=0.985)
+plt.suptitle("Region Specific Gray Matter Volume Differences Associated with Sex,\n" \
+             f"HC only (N$_{{Male}}$={ss[1]:,}, N$_{{Female}}$={ss[0]:,}), " \
+             "UK Biobank Dataset")
 
 ## Add common x label
 #plt.gcf().text(0.6, 0.03, "Change In Gray Matter Volume (%)", ha='center',

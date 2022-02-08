@@ -21,6 +21,7 @@ from IPython import get_ipython
 
 get_ipython().run_line_magic('cd', '..')
 from helpers.regression_helpers import check_covariance, match, check_assumptions
+from helpers.data_loader import DataLoader
 get_ipython().run_line_magic('cd', 'med')
 
 # =============================================================================
@@ -36,15 +37,18 @@ OUTDIR = HOMEDIR + "results/med/volume/"
 
 # Inputs
 CTRS = "metfonly_unmed"  # Contrast: diab or age
-T1DM_CO = 20  # Cutoff age value for age of diagnosis of diabetes to separate
+T1DM_CO = 40  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
+AGE_CO = 50  # Age cutoff (related to T1DM_CO) to avoid T2DM low duration subjects
 PARC = 46  # Type of parcellation to use, options: 46 or 139
 excl_sub = [] # [1653701, 3361084, 3828231, 2010790, 2925838, 3846337,]  # Subjects
 ## to exlucde due to abnormal total gray matter volumes
 excl_region = ["Pallidum"]  # Regions to exclude
 RLD = False  # Reload regressor matrices instead of computing them again
 
-#raise
+# <><><><><><><><>
+raise
+# <><><><><><><><>
 
 # %%
 # =============================================================================
@@ -74,51 +78,27 @@ data = data.query(f'eid not in {excl_sub}')
 
 # Load regressors
 # ------
-# Age
-age = pd.read_csv(SRCDIR + "ivs/age.csv", index_col=0)[["eid", "age-2"]] \
-    .rename({"age-2": "age"}, axis=1)
 
-# Sex
-sex = pd \
-    .read_csv(SRCDIR + "ivs/sex.csv", index_col=0)[["eid", "sex"]] \
-    .set_axis(["eid", "sex"], axis=1)
+# Initiate loader object
+dl = DataLoader()
 
-# Diabetes diagnosis
-diab = pd.read_csv(SRCDIR + "ivs/diab.csv", index_col=0)[["eid", "diab-2"]] \
-    .rename({"diab-2": "diab"}, axis=1) \
-    .query('diab >= 0')
+# Load data
+dl.load_basic_vars(SRCDIR)
 
-# College
-college = pd.read_csv(SRCDIR + "ivs/college.csv", index_col=0)[["eid", "college"]] \
+# Extract relevant variables
+age, sex, diab, college, bmi, mp, hrt, age_onset, duration, htn = \
+    (dl.age, dl.sex, dl.diab, dl.college, dl.bmi, dl.mp, dl.hrt, dl.age_onset, \
+    dl.duration, dl.htn)
 
 
-# BMI
-bmi = pd.read_csv(SRCDIR + "ivs/bmi.csv", index_col=0)[["eid", "bmi-2"]] \
-    .rename({"bmi-2": "bmi"}, axis=1) \
-    .dropna(how="any")
+# Restrictive variables
+# -----
 
-# Age of diabetes diagnosis (rough estimate!, averaged)
-age_onset = pd \
-    .read_csv(SRCDIR + "ivs/age_onset.csv", index_col=0) \
-    .set_index("eid") \
-    .mean(axis=1) \
-    .rename("age_onset") \
-    .reset_index()
+# Perform filtering
+dl.filter_vars(AGE_CO, T1DM_CO)
 
-# Remove diabetic subjects with missing age of onset OR have too early age of onset
-# which would suggest T1DM. If age of onset is below T1DM_CO, subject is excluded.
-age_onset = age_onset \
-    .merge(diab, on="eid", how="inner") \
-    .query(f'(diab==0 & age_onset!=age_onset) or (diab==1 & age_onset>={T1DM_CO})') \
-    [["eid", "age_onset"]]
-
-# Duration
-duration = age_onset \
-    .merge(age, on="eid", how="inner") \
-    .pipe(lambda df: df.assign(**{
-            "duration": df["age"] - df["age_onset"]})) \
-    .dropna(how="any") \
-    [["eid", "duration"]]
+# Extract filtered series
+age, mp, hrt, age_onset = dl.age, dl.mp, dl.hrt, dl.age_onset
 
 # Load medication specific data
 med = pd.read_csv(SRCDIR + f"med/{CTRS}.csv")[["eid", CTRS]]
@@ -131,11 +111,12 @@ med = pd.read_csv(SRCDIR + f"med/{CTRS}.csv")[["eid", CTRS]]
 # Status
 print(f"Building regressor matrix with contrast [{CTRS}]")
 
-# Choose variables
+# Merge IVs and put previously defined exclusions into action (through merge)
 regressors = functools.reduce(
         lambda left, right: pd.merge(left, right, on="eid", how="inner"),
-        [age, sex, college, bmi, med, duration]
-        )
+        [age, sex, college, bmi, mp, hrt, htn, med, age_onset, duration]
+        ) \
+        .drop(["mp", "hrt", "age_onset"], axis=1)
 
 # Inner merge regressors with a gm column to make sure all included subjects have data
 y = data['Volume of grey matter (normalised for head size)'].rename("feat").reset_index()
@@ -198,9 +179,8 @@ if RLD == False:
     # Match
     regressors_matched = match(
             df=regressors_clean,
-            main_var=CTRS,
-            vars_to_match=["age_group", "sex", "college", "duration_group"],
-            N=1,
+            main_vars=[CTRS],
+            vars_to_match=["age_group", "sex", "college", "htn", "duration_group"],
             random_state=1
             )
 
@@ -319,7 +299,7 @@ for i, feat in tqdm(enumerate(features), total=len(features), desc="Models fitte
     # Prep
     # ----
     # Extract current feature
-    sdf = df[["eid", "age", "sex", "college", "bmi", "duration", CTRS, f"{feat}"]]
+    sdf = df[["eid", "age", "sex", "college", "htn", "bmi", "duration", CTRS, f"{feat}"]]
 
     # Get sample sizes
     sample_sizes = sdf.groupby(CTRS)["eid"].count()
@@ -327,7 +307,7 @@ for i, feat in tqdm(enumerate(features), total=len(features), desc="Models fitte
     # Fit
     # -----
     # Formula
-    formula = f"{feat} ~ age + C(sex) + C(college) + bmi + duration + {CTRS}"
+    formula = f"{feat} ~ age + C(sex) + C(college) + C(htn) + bmi + duration + {CTRS}"
 
     # Fit model
     model = smf.ols(formula, data=sdf)

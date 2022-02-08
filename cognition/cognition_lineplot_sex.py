@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Apr  7 23:58:20 2021
+Created on Thu Jan 27 06:34:52 2022
 
 @author: botond
 """
@@ -26,7 +26,7 @@ from helpers.regression_helpers import check_covariance, match, \
 check_assumptions, detrend_diab_sex, detrend_diab_sex_info
 from helpers.data_loader import DataLoader
 from helpers.plotting_style import plot_pars, plot_funcs
-get_ipython().run_line_magic('cd', 'volume')
+get_ipython().run_line_magic('cd', 'cognition')
 
 
 # =============================================================================
@@ -36,7 +36,7 @@ get_ipython().run_line_magic('cd', 'volume')
 # Filepaths
 HOMEDIR = os.path.abspath(os.path.join(__file__, "../../../")) + "/"
 SRCDIR = HOMEDIR + "data/"
-OUTDIR = HOMEDIR + "results/volume/"
+OUTDIR = HOMEDIR + "results/cognition/"
 
 # Inputs
 CTRS = "diab"  # Contrast: diab or age
@@ -57,11 +57,26 @@ print("\nRELOADING REGRESSORS!\n") if RLD else ...
 # Load data
 # =============================================================================
 
-# Load volume data
+# Load cognitive data
 # -------
-# Load atrophy data
-data = pd.read_csv(SRCDIR + "volume/volume_data.csv").drop(["age", "gender"], axis=1) \
-    [["eid", '25005-2.0']].rename({'25005-2.0': "volume"}, axis=1)
+# Labels
+labels = {
+     "4282-2.0": "Short_Term_Memory",
+     "6350-2.0": "Executive_Function",
+     "20016-2.0": "Abstract_Reasoning",
+     "20023-2.0": "Reaction_Time",
+     "23324-2.0": "Processing_Speed",
+     }
+
+# Load data
+data = pd \
+    .read_csv(SRCDIR + "cognition/cognition_data.csv") \
+    [["eid",
+      *labels.keys()
+     ]]
+
+# Rename columns
+data = data.rename(labels, axis=1)
 
 # Load regressors
 # ------
@@ -87,7 +102,6 @@ dl.filter_vars(AGE_CO, T1DM_CO)
 # Extract filtered series
 age, mp, hrt, age_onset = dl.age, dl.mp, dl.hrt, dl.age_onset
 
-
 # %%
 # =============================================================================
 # Transform
@@ -104,11 +118,20 @@ regressors = functools.reduce(
         ) \
         .drop(["mp", "hrt", "age_onset"], axis=1)
 
-# Merge regressors with data to keep records only with existing data
-regressors_y = regressors.merge(data, on="eid", how="inner")
+# Get regressor columns for later
+reg_cols = regressors.columns
+
+# Merge domain data and clean out invalied entries
+data_merged = data[data>0].dropna()
+
+# Get data columns for later
+data_cols = data_merged.columns
+
+# Merge regressors with data
+regressors_y = regressors.merge(data_merged, on="eid", how="inner")
 
 # Drop data columns
-regressors_clean = regressors_y.drop("volume", axis=1)
+regressors_clean = regressors_y.drop(data_cols[1:], axis=1)
 
 # Match
 if RLD == False:
@@ -132,16 +155,16 @@ if RLD == False:
 if RLD == False:
     regressors_matched \
         .reset_index(drop=True) \
-        .to_csv(OUTDIR + "regressors/pub_meta_volume_lineplot_matched_" \
+        .to_csv(OUTDIR + "regressors/pub_meta_cognition_lineplot_matched_" \
                 f"regressors_{CTRS}{EXTRA}.csv")
 
 # Get regressors
 regressors_matched = pd.read_csv(
-        OUTDIR + f"regressors/pub_meta_volume_lineplot_matched_regressors_" \
+        OUTDIR + f"regressors/pub_meta_cognition_lineplot_matched_regressors_" \
         f"{CTRS}{EXTRA}.csv",
         index_col=0)
 
-# %%
+    # %%
 # =============================================================================
 # Statistics
 # =============================================================================
@@ -169,16 +192,21 @@ ss = df \
 
 print("Sample sizes from age groups:\n", ss)
 
-# ss.plot.bar()
-# plt.xticks(rotation=45)
-# plt.ylabel("Count")
-
-# Inferential stats
-# ----------
-
-# Merge regressors with data
+# Merge and standardize
 df = regressors_matched \
-    .merge(data, on="eid")
+    .merge(data_merged, on="eid") \
+    .set_index(list(reg_cols)) \
+    .pipe(lambda df: df.assign(**{
+        "Short_Term_Memory": df["Short_Term_Memory"],
+         "Executive_Function": -1*df["Executive_Function"],
+         "Abstract_Reasoning": df["Abstract_Reasoning"],
+         "Reaction_Time": -1*df["Reaction_Time"],
+         "Processing_Speed": df["Processing_Speed"]
+         })) \
+    .pipe(lambda df:
+        ((df - df.mean(axis=0))/df.std(axis=0)).mean(axis=1)) \
+    .rename("score") \
+    .reset_index() \
 
 # Separately for sexes
 # >>>>>>>>
@@ -193,7 +221,7 @@ for sex_val in [0, 1]:
     sdf = df.query(f'sex=={sex_val}')
 
     # Linear regression
-    model = smf.ols("volume ~ diab + age + C(college) + htn", data=sdf)
+    model = smf.ols("score ~ diab + age + C(college) + htn", data=sdf)
     results = model.fit()
     # print(results.summary())
 
@@ -216,7 +244,7 @@ for sex_val in [0, 1]:
 sdf = df.copy()
 
 # Linear regression
-model = smf.ols("volume ~ diab + sex + diab*sex + age + C(college) + htn", data=sdf)
+model = smf.ols("score ~ diab + sex + diab*sex + age + C(college) + htn", data=sdf)
 results = model.fit()
 # print(results.summary())
 
@@ -240,7 +268,7 @@ An alternative approach would be to bootstrap using sigmas and covariances.
 # Estimated age gap between the two cohorts
 print(f'\nEstimated age gap: {results.params["diab"]/results.params["age"]:.2f}, years.')
 
-
+#TODO: -v
 # %%
 # =============================================================================
 # Plot
@@ -261,8 +289,7 @@ lw = lw*1
 # add back in data
 # unify columns of contrast variables
 # make age groups
-gdf = regressors_matched \
-    .merge(data, on="eid") \
+gdf = df \
     .pipe(lambda df: df.assign(**{
         "group": df[["sex", "diab"]].astype(str).agg("_".join, axis=1),
         "age_group":pd.cut(df["age"], bins=np.arange(0, 100, 5)).astype(str)
@@ -286,7 +313,7 @@ palette = sns.color_palette(["coral", "maroon", "dodgerblue", "navy"])
 plt.figure(figsize=(3.625, 5))
 
 # Create plot
-sns.lineplot(data=gdf, x="age_group", y="volume",
+sns.lineplot(data=gdf, x="age_group", y="score",
          hue="group", ci=68, err_style="bars",
          marker="o", linewidth=1*lw, markersize=3*lw, err_kws={"capsize": 2*lw,
                                                          "capthick": 1*lw,
@@ -297,13 +324,12 @@ sns.lineplot(data=gdf, x="age_group", y="volume",
 # ----
 
 # Title
-plt.title("Gray Matter Volume across\nAge, T2DM Status and Sex\n" \
+plt.title("Cognitive Performance across\nAge, T2DM Status and Sex\n" \
           f"N={ss} (Exact Matched)", x=0.42, y=1.05)
 
 plt.xlabel("Age group (year)")
-#plt.ylabel("Gray matter volume delineated\nbrain age (y)")
 
-plt.ylabel("Gray matter volume - normalized for headsize (mm3) ")
+plt.ylabel("Cognitive Performance\nCombined Score from Multiple Tasks ")
 plt.gca().yaxis.set_major_formatter(mtc.FuncFormatter
        (lambda x, pos: f"{x/1e5:.1f}"))
 plt.annotate("×10$^5$", xy=[0, 1.03], xycoords="axes fraction",
@@ -337,7 +363,13 @@ plt.tight_layout()
 # ----
 
 plt.tight_layout(rect=[0, 0, 1, 0.98])
-plt.savefig(OUTDIR + f"figures/JAMA_meta_figure_volume_lineplot{EXTRA}.pdf",
+plt.savefig(OUTDIR + f"figures/JAMA_meta_figure_cognition_lineplot{EXTRA}.pdf",
             transparent=True)
 # plt.close("all")
+
+
+
+
+
+
 

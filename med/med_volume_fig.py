@@ -133,20 +133,24 @@ for sp in ['bottom', 'top', 'right', 'left']:
     ax.spines[sp].set_linewidth(0.75*lw)
     ax.spines[sp].set_color("black")
 
+# Adjust ylim t make space for arrow
+plt.gca().set_ylim([item[0] + item[1] for item in zip(plt.gca().get_ylim(), [-3, -1])])
+
+
 # Add arrow representing directionality
 ax.annotate("Improvement",
-            xy=(0.95, 0.98), xycoords='axes fraction',
-            xytext=(0.05, 0.98), textcoords='axes fraction',
+            xy=(0.9, 0.96), xycoords='axes fraction',
+            xytext=(0.05, 0.96), textcoords='axes fraction',
             arrowprops=dict(arrowstyle="fancy, head_width=1, head_length=2",
                             connectionstyle="arc3",
-                            facecolor='k',
+                            facecolor='dimgrey',
                             linewidth=.2),
             va="center", fontsize=7
             )
 
 # Add labels
 ss = df["sample_sizes"]
-ax.set_xlabel(f"Percentage difference in \ngray matter volume (% of avg)", x=0.4)
+ax.set_xlabel("Percentage difference in \ngray matter volume (% of avg)", x=0.4)
 
 ttl = plt.title("Region Specific Gray Matter Volume \n" \
           f"({CTRS_label})\n" \

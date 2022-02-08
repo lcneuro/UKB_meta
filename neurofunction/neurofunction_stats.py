@@ -61,12 +61,15 @@ T1DM_CO = 40  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
 AGE_CO = 50  # Age cutoff (related to T1DM_CO) to avoid T2DM low duration subjects
 
-CTRS = "diab"  # Contrast: diab or age
+CTRS = "sex"  # Contrast: diab or age
 CT = 12  # Cluster threshold for group level analysis (in voxels?)
 PTHR = 0.05  # Significance threshold for p values
 GM_THR = 0.5  # Threshold for gm mask. Voxels with Probability above this
 MDL = "ALFF"  # Modality
-EXTRA = ""
+STRAT_SEX = False  # Stratify sex or not #TODO: need to adjust detrending accordinlgy
+SEX = 1  # If stratifying per sex, which sex to keep
+
+EXTRA = "_M"
 
 VOLUME = 1000  # Cluster volume, mm3
 VOXEL_DIM = 2.4  # Voxel dimension in work space, assuming cubic voxels, mm
@@ -74,10 +77,11 @@ VOXEL_DIM = 2.4  # Voxel dimension in work space, assuming cubic voxels, mm
 regressors_dict = {
     "diab": ["subject_label", "diab", "age", "sex", "college", "htn"],
     "age": ["subject_label", "age", "sex", "college", "htn"],
+    "sex": ["subject_label", "age", "sex", "college", "htn"],
     }
 
 print("Settings:\n" \
-    f"CONTRAST={CTRS}, MDL={MDL}, PTHR={PTHR}, CT={CT}")
+    f"CONTRAST={CTRS}, MDL={MDL}, PTHR={PTHR}, CT={CT}, EXTRA={EXTRA}")
 
 #raise
 
@@ -158,6 +162,16 @@ if CTRS == "age":
     # Exclude subjects with T2DM
     regressors = regressors.query("diab == 0")
 
+# If contrast is sex
+if CTRS == "sex":
+    # Exclude subjects with T2DM
+    regressors = regressors.query("diab == 0")
+
+# Optional: stratify per sex
+if STRAT_SEX:
+    # Include subjects of one sex only
+    regressors = regressors.query(f"sex == {SEX}")
+
 # Inner merge regressors with subjects for whom ALFF has been computed
 regressors_clean = regressors.merge(img_subs, on="eid")
 
@@ -174,19 +188,19 @@ if CTRS == "age":
             "college": "disc",
             }
 
-    for name, type_ in var_dict.items():
+    # for name, type_ in var_dict.items():
 
-        check_covariance(
-                regressors_clean,
-                var1=name,
-                var2="age",
-                type1=type_,
-                type2="cont",
-                save=True,
-                prefix=OUTDIR + "covariance/pub_meta_neurofunction_covar"
-                )
+    #     check_covariance(
+    #             regressors_clean,
+    #             var1=name,
+    #             var2="age",
+    #             type1=type_,
+    #             type2="cont",
+    #             save=True,
+    #             prefix=OUTDIR + "covariance/pub_meta_neurofunction_covar"
+    #             )
 
-        plt.close("all")
+        # plt.close("all")
 
     if RLD == False:
 
@@ -196,7 +210,7 @@ if CTRS == "age":
                 main_vars=["age"],
                 vars_to_match=["sex", "college", "htn"],
                 value=3,
-                random_state=1
+                random_state=11
                 )
 
 if CTRS == "diab":
@@ -229,15 +243,48 @@ if CTRS == "diab":
             df=regressors_clean,
             main_vars=["diab"],
             vars_to_match=["age", "sex", "college", "htn"],
-            random_state=1
+            random_state=11
             )
+
+if CTRS == "sex":
+
+    # Interactions among independent variables
+    var_dict = {
+            "age": "cont",
+            "college": "disc",
+            "htn": "disc"
+            }
+
+    # for name, type_ in var_dict.items():
+
+    #     check_covariance(
+    #             regressors_clean,
+    #             var1="sex",
+    #             var2=name,
+    #             type1="disc",
+    #             type2=type_,
+    #             save=True,
+    #             prefix=OUTDIR + "covariance/pub_meta_neurofunction_covar"
+    #             )
+
+    plt.close("all")
+
+    if RLD == False:
+        # Match
+        regressors_matched = match(
+                df=regressors_clean,
+                main_vars=["sex"],
+                vars_to_match=["age", "college", "htn"],
+                random_state=11
+                )
+
 
 # Status
 print("Covariance checked.")
 
 if RLD == False:
     # Save matched regressors matrix
-    regressors_matched.to_csv(OUTDIR + f"regressors/pub_meta_neurofunction_matched_regressors_{CTRS}.csv")
+    regressors_matched.to_csv(OUTDIR + f"regressors/pub_meta_neurofunction_matched_regressors_{CTRS}{EXTRA}.csv")
 
     # Status
     print("Matching performed.")
@@ -255,7 +302,7 @@ print("Loading regressors.")
 # Load regressors
 regressors_matched = pd \
     .read_csv(OUTDIR + \
-         f"regressors/pub_meta_neurofunction_matched_regressors_{CTRS}.csv",
+         f"regressors/pub_meta_neurofunction_matched_regressors_{CTRS}{EXTRA}.csv",
          index_col=0) \
     .rename({"eid": "subject_label"}, axis=1)
 
@@ -327,6 +374,10 @@ nib.save(thr_map_nan, OUTDIR + f"stats/pub_meta_neurofunction_statthr_" \
 
 # Status
 print("Finished with extracting basic results.")
+
+# <><><><><><><><>
+# raise
+# <><><><><><><><>
 
 # %%
 # =============================================================================
@@ -443,7 +494,7 @@ signal_dict = {}
 # Iterate through all subjects
 for i, subject in tqdm(enumerate(regressors_matched["subject_label"]),
                        total=len(regressors_matched["subject_label"]),
-                       desc="Extracting signal from subject: "):
+                       desc="{CTRS}{EXTRA}cting signal from subject: "):
 
     # Apply masking to ALFF image
     signal = label_masker.fit_transform([imgs[i]])
@@ -482,9 +533,11 @@ for label in clusters["label"]:
 
     # Formula
     if CTRS == "age":
-        formula = f"{label} ~ age + C(sex) + C(college)"
+        formula = f"{label} ~ age + C(sex) + C(college) + htn"
     if CTRS == "diab":
-        formula = f"{label} ~ C(diab) + age + C(sex) + C(college)"
+        formula = f"{label} ~ C(diab) + age + C(sex) + C(college) + htn"
+    if CTRS == "sex":
+        formula = f"{label} ~ age + C(sex) + C(college) + htn"
 
     # Construct OLS model
     model = smf.ols(formula, data=df)
@@ -494,7 +547,7 @@ for label in clusters["label"]:
 
     # Save results
     with open(OUTDIR + f"stats_misc/pub_meta_neurofunction_regression_table" \
-              f"_{label}_{CTRS}.html", "w") as file:
+              f"_{label}_{CTRS}{EXTRA}.html", "w") as file:
         file.write(results.summary().as_html())
 
     # Check assumptions
@@ -502,7 +555,7 @@ for label in clusters["label"]:
         results,
         df,
         prefix=OUTDIR + \
-        f"stats_misc/pub_meta_neurofunction_stats_assumptions_{label}_{CTRS}"
+        f"stats_misc/pub_meta_neurofunction_stats_assumptions_{label}_{CTRS}{EXTRA}"
         )
 
     if CTRS == "diab":
@@ -524,7 +577,7 @@ for label in clusters["label"]:
                    err_style="bars", marker="o", sort=False,
                    err_kws={"capsize": 5}) \
 
-        plt.savefig(OUTDIR + f"stats_misc/pub_meta_neurofunction_age-diab-plot_{label}.pdf")
+        plt.savefig(OUTDIR + f"stats_misc/pub_meta_neurofunction_age-diab-plot_{label}{EXTRA}.pdf")
         plt.close()
 
 # Status

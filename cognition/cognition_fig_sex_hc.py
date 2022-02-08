@@ -38,11 +38,6 @@ OUTDIR = HOMEDIR + "results/cognition/"
 cases = ["sex"]
 EXTRA = "_sex_hc"
 
-# Case specific values
-titles = [
-        "Sex: UK Biobank Dataset (HC only)",
-        ]
-
 ylabeltexts = [
         "Percentage difference in cognitive\nperformance Male vs. Female (%)",
         ]
@@ -116,7 +111,8 @@ p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
 
 # Figure
 f = plt.figure(figsize=(7.25, 3))
-plt.suptitle("Domain Specific Cognitive Deficits Associated with Sex\n")
+plt.suptitle("Domain Specific Cognitive Differences Associated with Sex\n" \
+             "HC only, UK Biobank Dataset")
 
 # Panels A & B
 # ------
@@ -188,8 +184,6 @@ for c, case in enumerate(cases):
                          rotation=0)
 
     # Format
-    # Add title
-    plt.title(titles[c])
 
     # Limits
     plt.xlim([-0.5, len(df)-0.5])

@@ -43,9 +43,9 @@ ylabeltexts = [
         f"Percentage difference in cognitive performance (% of avg)",
         ]
 colors = ["PRGn"]
-ylims = [[-25, 15]]
-sfs = [3e2]  # Marker size factors
-sfscf = [800]  # Marker size scale factors
+ylims = [[-35, 15]]
+sfs = [2e2]  # Marker size factors
+sfscf = [500]  # Marker size scale factors
 sdxo = [1.35]  # x axis offset of scale info
 textpads = [0.1]  # Padding for text along y axis
 xtickrots = [45]  # Rotation of xticks
@@ -127,7 +127,7 @@ for c, case in enumerate(cases):
     # Populate plot
     # Colors
     colors_all = colors_from_values(
-        df["beta"], colors[c], vmin=min(df["beta"]), vmax=-min(df["beta"]))
+        df["beta"], colors[c], vmin=min(df["beta"])/3, vmax=-min(df["beta"])/3)
 
     for i, item in enumerate(df.iterrows()):
 
@@ -174,7 +174,7 @@ for c, case in enumerate(cases):
     ttl.set_x(ttl.get_position()[0]-0.12)
 
     # Limits
-    plt.xlim([-0.5, len(df)-0.5])
+    plt.xlim([-1.5, len(df)-0.5])
     plt.ylim(ylims[c])
 
     # Labels
@@ -203,11 +203,11 @@ for c, case in enumerate(cases):
 
     # Add arrow representing directionality
     plt.gca().annotate("Improvement",
-                xy=(0.04, 0.8), xycoords='axes fraction',
-                xytext=(0.04, 0.3), textcoords='axes fraction',
+                xy=(0.1, 0.8), xycoords='axes fraction',
+                xytext=(0.1, 0.3), textcoords='axes fraction',
                 arrowprops=dict(arrowstyle="fancy, head_width=1, head_length=2",
                                 connectionstyle="arc3",
-                                facecolor='k',
+                                facecolor='dimgrey',
                                 linewidth=.2),
                 va="center", ha="center", fontsize=9, rotation=90
                 )

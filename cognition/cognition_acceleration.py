@@ -47,7 +47,7 @@ RLD = 0 # Reload regressor matrices instead of computing them again
 print("\nRELOADING REGRESSORS!\n") if RLD else ...
 
 # <><><><><><><><>
-raise
+# raise
 # <><><><><><><><>
 
 # %%
@@ -293,7 +293,7 @@ gdf = gdf.sort_values(by=["age", "duration"], na_position="first")
 print("Sampe sizes, age info:\n", gdf.groupby(['duration_group', 'age_group'])["age"].describe())
 
 # Colors
-palette = sns.color_palette(["black", "tomato", "darkred"])
+palette = sns.color_palette(["black", "orange", "red"])
 
 # Content
 # -----
@@ -325,7 +325,7 @@ plt.annotate(text, xycoords="axes fraction", xy=[0.279, 0.03],
 # ----
 
 # Title
-ttl = plt.title("Cognitive performance across age and T2DM disease duration:\n" \
+ttl = plt.title("Cognitive Performance across Age and\nT2DM Disease Duration:" \
           f"UK Biobank dataset\n"
           f"N$_{{≥10 years}}$={int(gdf.shape[0]/3)}, " \
           f"N$_{{0-9 years}}$={int(gdf.shape[0]/3)}, " \
