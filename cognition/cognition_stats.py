@@ -26,14 +26,15 @@ from IPython import get_ipython
 get_ipython().run_line_magic('cd', '..')
 from helpers.regression_helpers import check_covariance, match, match_cont, check_assumptions
 from helpers.data_loader import DataLoader
+from helpers.plotting_style import plot_pars, plot_funcs
 get_ipython().run_line_magic('cd', 'cognition')
 
 # =============================================================================
 # Setup
 # =============================================================================
 
-plt.style.use("ggplot")
-sns.set_style("whitegrid")
+# plt.style.use("ggplot")
+# sns.set_style("whitegrid")
 
 # Filepaths
 HOMEDIR = os.path.abspath(os.path.join(__file__, "../../../")) + "/"
@@ -275,6 +276,75 @@ for i, feat in enumerate(features):
         regressors_matched.to_csv(OUTDIR + \
             f"regressors/pub_meta_cognition_matched_regressors_{feat}_{CTRS}{EXTRA}.csv")
 
+# <><><><><><><><>
+# raise
+# <><><><><><><><>
+
+
+# %%
+# =============================================================================
+# Sample sizes
+# =============================================================================
+
+# Set style for plotting
+# from helpers.plotting_style import plot_pars, plot_funcs
+
+# If not separating per sex
+if ~STRAT_SEX:
+
+    # Iterate over all features
+    for i, feat in enumerate(features):
+
+        # CTRS specific settings
+        dc = 1 if CTRS == "diab" else 0
+        ylim = 300 if CTRS == "diab" else 1500
+
+        # Load regressors
+        regressors_matched = pd.read_csv(OUTDIR + \
+                f"regressors/pub_meta_cognition_matched_regressors_{feat}_{CTRS}{EXTRA}.csv",
+                index_col=0)
+
+        # Figure
+        plt.figure(figsize=(3.5, 2.25))
+
+        # Plot
+        sns.histplot(data=regressors_matched.query(f'diab=={dc}'),
+                     x="age", hue="sex",
+                     multiple="stack", bins=np.arange(50, 85, 5),
+                     palette=["indianred", "dodgerblue"], zorder=2)
+
+        # Annotate total sample size
+        text = f"N={regressors_matched.query(f'diab=={dc}').shape[0]:,}"
+        text = text + " (T2DM+)" if CTRS == "diab" else text
+        text = text + f"\nMean age={regressors_matched.query(f'diab=={dc}')['age'].mean():.1f}y"
+        plt.annotate(text, xy=[0.66, 0.88], xycoords="axes fraction", fontsize=7,  va="center")
+
+        # Legend
+        legend_handles = plt.gca().get_legend().legendHandles
+        plt.legend(handles=legend_handles, labels=["Females", "Males"], loc=2,
+                   fontsize=8)
+
+        # Formatting
+        plt.xlabel("Age")
+        plt.ylim([0, ylim])
+        plt.grid(zorder=1)
+        plt.title(f'{feat.replace("_", " ")}', fontsize=10)
+
+        # Save
+        plt.tight_layout(rect=[0, 0.00, 1, 0.995])
+        plt.savefig(OUTDIR + f"stats_misc/pub_meta_cognition_sample_sizes_{feat}" \
+                    f"_{CTRS}.pdf",
+                    transparent=True)
+
+    # # Reset style
+    # plt.close("all")
+    # plt.style.use("default")
+    # plt.rcdefaults()
+
+    # Close all
+    plt.close("all")
+
+
 # %%
 # =============================================================================
 # Analysis
@@ -282,6 +352,10 @@ for i, feat in enumerate(features):
 
 # Status
 print(f"Fitting models for contrast [{CTRS}].")
+
+# Set style for plotting
+from helpers.plotting_style import plot_pars, plot_funcs
+lw=1.5
 
 # Dict to store stats that will be computed below
 feat_stats = {}
@@ -337,7 +411,7 @@ for i, feat in enumerate(features):
             f"stats_misc/pub_meta_cognition_stats_assumptions_{feat}_{CTRS}{EXTRA}"
             )
 
-    # Plot across age
+    # Lineplot across age
     if CTRS == "diab":
         gdf = sdf \
             [[feat, "age", "diab"]] \
@@ -346,15 +420,25 @@ for i, feat in enumerate(features):
                     })) \
             .sort_values(by="age")
 
-        plt.figure(figsize=(10, 7))
+        plt.figure(figsize=(3.5, 3))
         plt.title(feat)
         sns.lineplot(data=gdf, x="age_group", y=feat, hue="diab",
                      palette=sns.color_palette(["black", "red"]),
-                     ci=68, err_style="bars",
-                     marker="o", linewidth=2, markersize=6,
-                     err_kws={"capsize": 3, "capthick": 2, "elinewidth": 2})
+                     ci=68, err_style="bars", marker="o",
+                     linewidth=1*lw, markersize=3 *lw, err_kws={"capsize": 2*lw,
+                         "capthick": 1*lw, "elinewidth": 1*lw})
+        legend_handles = plt.gca().get_legend().legendHandles
+        plt.legend(handles=legend_handles, labels=["HC", "T2DM+"], loc="best",
+                   fontsize=8, title="")
+        plt.xlabel("Age group")
+        plt.ylabel("Cognitive task performance")
+        plt.xticks(rotation=45)
+        plt.grid()
+        plt.title(feat.replace("_", " "))
+
         plt.tight_layout()
-        plt.savefig(OUTDIR + f"stats_misc/pub_meta_cognition_age-diab-plot_{feat}{EXTRA}.pdf")
+        plt.savefig(OUTDIR + f"stats_misc/pub_meta_cognition_age-diab-plot_{feat}" \
+                    f"{EXTRA}.pdf", transparent=True)
         plt.close()
 
     # Plot distribution of feature

@@ -26,8 +26,6 @@ from helpers.regression_helpers import check_covariance, match_cont, check_assum
 from helpers.plotting_style import plot_pars, plot_funcs
 get_ipython().run_line_magic('cd', 'volume')
 
-#TODO: detrender?
-
 # =============================================================================
 # Setup
 # =============================================================================
@@ -49,7 +47,7 @@ RLD = 0 # Reload regressor matrices instead of computing them again
 print("\nRELOADING REGRESSORS!\n") if RLD else ...
 
 # <><><><><><><><>
-raise
+# raise
 # <><><><><><><><>
 
 # %%
@@ -146,17 +144,17 @@ for name, type_ in var_dict.items():
 
     if RLD == False:
 
-        check_covariance(
-                regressors_clean.query(f'{CTRS} == {CTRS}'),
-                var1=CTRS,
-                var2=name,
-                type1="cont",
-                type2=type_,
-                save=True,
-                prefix=OUTDIR + "covariance/pub_meta_volume_acceleration_covar"
-                )
+        # check_covariance(
+        #         regressors_clean.query(f'{CTRS} == {CTRS}'),
+        #         var1=CTRS,
+        #         var2=name,
+        #         type1="cont",
+        #         type2=type_,
+        #         save=True,
+        #         prefix=OUTDIR + "covariance/pub_meta_volume_acceleration_covar"
+        #         )
 
-        plt.close("all")
+        # plt.close("all")
 
 
         # Match
@@ -173,6 +171,58 @@ if RLD == False:
     regressors_matched \
         .reset_index(drop=True) \
         .to_csv(OUTDIR + f"regressors/pub_meta_volume_acceleration_matched_regressors_{CTRS}.csv")
+
+# <><><><><><><><>
+# raise
+# <><><><><><><><>
+
+# %%
+# =============================================================================
+# Sample sizes
+# =============================================================================
+
+# CTRS specific settings
+dc = 1 if CTRS == "diab" else 0
+ylim = 120
+
+# Load regressors
+regressors_matched = pd.read_csv(
+        OUTDIR + f"regressors/pub_meta_volume_acceleration_matched_regressors_{CTRS}.csv"
+        )
+
+# Figure
+plt.figure(figsize=(5, 4))
+
+# Plot
+sns.histplot(data=regressors_matched.query(f'diab=={dc}'),
+             x="age", hue="sex",
+             multiple="stack", bins=np.arange(50, 85, 5),
+             palette=["indianred", "dodgerblue"], zorder=2)
+
+# Annotate total sample size and mean age
+text = f"N={regressors_matched.query(f'diab=={dc}').shape[0]:,}"
+text = text + " (T2DM+)" if CTRS == "diab" else text
+text = text + f"\nMean age={regressors_matched.query(f'diab=={dc}')['age'].mean():.1f}y"
+plt.annotate(text, xy=[0.66, 0.88], xycoords="axes fraction", fontsize=10, va="center")
+
+# Legend
+legend_handles = plt.gca().get_legend().legendHandles
+plt.legend(handles=legend_handles, labels=["Females", "Males"], loc=2,
+           fontsize=8)
+
+# Formatting
+plt.xlabel("Age")
+plt.ylim([0, ylim])
+plt.grid(zorder=1)
+# plt.title("Gray Matter Volume", fontsize=10)
+
+# Save
+plt.tight_layout(rect=[0, 0.00, 1, 0.85])
+plt.savefig(OUTDIR + f"stats_misc/pub_meta_volume_acceleration_sample_sizes_{CTRS}.pdf",
+            transparent=True)
+
+# Close all
+# plt.close("all")
 
 # %%
 # =============================================================================
@@ -226,6 +276,9 @@ check_assumptions(
 # Calculate acceleration of aging in additional year/year
 acc_res = results.params["duration"]/results.params["age"]
 
+# Print regression estimates
+print(results.summary())
+
 # Covariance matrix of coefficients
 print(results.cov_params())
 
@@ -260,8 +313,8 @@ gdf = df.copy()
 gdf = gdf \
     .pipe(lambda df:
         df.assign(**{"age_group": pd.cut(df["age"], np.arange(0, 100, 5),
-               include_lowest=True, precision=0).astype(str)})) \
-    .query('age_group not in ["(40, 45]", "(45, 50]", "(75, 80]"]')
+               include_lowest=True, precision=0).astype(str)}))# \
+    # .query('age_group not in ["(40, 45]", "(45, 50]", "(75, 80]"]')
 
 # Sort
 gdf = gdf.sort_values(by=["age", "duration"], na_position="first")
@@ -312,7 +365,7 @@ ttl.set_x(ttl.get_position()[0]-0.056)
 plt.xlabel("Age group (year)")
 #plt.ylabel("Gray matter volume delineated\nbrain age (y)")
 
-plt.ylabel("Gray matter volume (voxel count)")
+plt.ylabel("Gray matter volume (mm3, normalized for headsize)")
 plt.gca().yaxis.set_major_formatter(mtc.FuncFormatter
        (lambda x, pos: f"{x/1e5:.1f}"))
 plt.annotate("×10$^5$", xy=[0, 1.03], xycoords="axes fraction",
@@ -322,8 +375,8 @@ legend_handles, _ = plt.gca().get_legend_handles_labels()
 [ha.set_linewidth(5) for ha in legend_handles]
 
 plt.legend(title="T2DM disease duration",
-           handles=legend_handles[::-1],
-           labels=["≥10 years", "0-9 years", "HC"],
+           handles=legend_handles,# [::-1],
+           labels=["HC", "0-9 years", "≥10 years"],
            loc=1)
 
 plt.gca().xaxis.tick_bottom()

@@ -87,10 +87,10 @@ plt.annotate(text, xy=[0.05, 0.85], xycoords="axes fraction")
 plt.tight_layout()
 
 # Save
-plt.savefig(OUTDIR + "zmix/pub_meta_t2dm-duration-age.pdf")
+# plt.savefig(OUTDIR + "zmix/pub_meta_t2dm-duration-age.pdf")
 
 # Close
-plt.close()
+# plt.close()
 
 # %%
 # =============================================================================
@@ -151,10 +151,10 @@ plt.annotate(text, xy=[0.05, 0.8], xycoords="axes fraction")
 plt.tight_layout()
 
 # Save
-plt.savefig(OUTDIR + "zmix/pub_meta_t2dm-duration-age-sex.pdf")
+# plt.savefig(OUTDIR + "zmix/pub_meta_t2dm-duration-age-sex.pdf")
 
 # Close
-plt.close()
+# plt.close()
 
 # %%
 # =============================================================================
@@ -196,23 +196,49 @@ sns.histplot(
 plt.tight_layout()
 
 # Save
-plt.savefig(OUTDIR + "zmix/pub_meta_t2dm_samplesize-age-sex2.pdf")
+# plt.savefig(OUTDIR + "zmix/pub_meta_t2dm_samplesize-age-sex2.pdf")
 
 # Close
-plt.close()
+# plt.close()
 
 
 # %%
 # Sex specific 2d density plot
 # ----
 
+# Title dictionary
+title_dict = {"F": "Female", "M": "Male"}
+
 # Plot
 g = sns.FacetGrid(data=df, col="sex", col_order=["F", "M"],
-              hue="sex", palette=sns.color_palette(["dodgerblue", "indianred"])) \
+              hue="sex", palette=sns.color_palette(["dodgerblue", "indianred"]),) \
     .map_dataframe(
         sns.histplot, "age", "duration", multiple="dodge", hue_order=["F", "M"]
         ) \
-    .set_titles("Sample size distribution @ Age | Sex")
+    .set_xlabels("Age (year)") \
+    .set_ylabels("T2DM Disease Duration (year)") \
+
+
+# Resize
+g.fig.set_size_inches((5, 4))
+
+# Adjust axes (titles, lim)
+for ax in g.axes[0]:
+    ax.set_title("Females" if "F" == ax.get_title()[-1] else \
+                 "Males" if "M" == ax.get_title()[-1] else "", fontsize=12)
+    ax.set_xlim([50, 80])
+    ax.grid(False)
+
+# Suptitle
+g.fig.suptitle("T2DM Disease Distribution across Sample\n" \
+               "for Gray Matter Volume Analyses, UK Biobank", fontsize=13)
+
+# Add spines
+for ax in g.axes[0]:
+    for sp in ['bottom', 'top', 'right', 'left']:
+        ax.spines[sp].set_linewidth(0.75)
+        ax.spines[sp].set_color("black")
+
 
 plt.tight_layout()
 
@@ -220,8 +246,7 @@ plt.tight_layout()
 plt.savefig(OUTDIR + "zmix/pub_meta_t2dm_duration-age-sex_2d.pdf")
 
 # Close
-plt.close()
-
+# plt.close()
 
 # tdf = detrender(df=df, x="age", y="duration", subvar="sex", subvar_value=1, weight_fact=2)
 
@@ -235,7 +260,7 @@ plt.close()
 
 # Src
 src = "volume/regressors/" \
-    "pub_meta_volume_lineplot_matched_regressors_diab_sex6.csv"
+    "pub_meta_volume_lineplot_matched_regressors_diab_sex.csv"
 
 # Load regressor matrix for specific case
 regressors = pd.read_csv(OUTDIR + src, index_col=0)
@@ -254,7 +279,6 @@ df = regressors \
 # ----
 
 # Plot
-plt.figure()
 plt.title("Sample size distribution @ Age | Sex")
 sns.histplot(
     data=df, x="age", hue="sex", multiple="dodge", hue_order=["F", "M"],

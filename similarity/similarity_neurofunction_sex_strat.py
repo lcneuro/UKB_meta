@@ -25,6 +25,7 @@ from scipy import stats, special
 import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
+from adjustText import adjust_text
 from IPython import get_ipython
 
 get_ipython().run_line_magic('cd', '..')
@@ -337,18 +338,80 @@ plt.savefig(OUTDIR + f"figures/corr_matrix_{PC}_neurofunction_strat{EXTRA}.pdf")
 df.columns = list(map(lambda x: x.replace(" ", "_"), list(df.columns)))
 
 combos = list(itertools.combinations(keys, 2))
+icombos = list(itertools.combinations(np.arange(df.shape[1]-1), 2))
 
-for combo in tqdm(combos):
+# It over
+for c, combo in tqdm(enumerate(combos)):
+
+    # Unpack label combo
     a, b = combo
-    # plt.figure(figsize=(3.5, 3.5))
-    # plt.scatter(df[a], df[b])
-    # for i in range(len(df)):
-    #     plt.annotate(df.loc[i, "label"], xy=[df.loc[i, a], df.loc[i, b]])
+
+    # Unpack corresponding indexes
+    i1, i2 = icombos[c]
+
+    # Seaborn lmplot
     sns.lmplot(data=df, x=a, y=b, height=3.5,
                line_kws={"linewidth": 2, "zorder": 2},
-               scatter_kws={"linewidth": 0.7, "edgecolor": "k", "zorder": 3})
-    plt.xlabel(a.replace("_", " "))
-    plt.ylabel(b.replace("_", " "))
+               scatter_kws={"s": 15, "linewidth": 0.7, "edgecolor": "k", "zorder": 3})
+
+    # Optional: annotate labels to points >
+    # -----
+    # Decide which labels to annotate based on coords, to avoid overlapping text
+    # Based on x coord
+    # limits_x = np.percentile(np.linspace(df.loc[:, a].min(), df.loc[:, a].max(), 101), [2, 98])
+    limits_x = np.percentile(df.loc[:, a], [3, 97])
+
+    # Based on y coord
+    # limits_y = np.percentile(np.linspace(df.loc[:, b].min(), df.loc[:, b].max(), 101), [2, 98])
+    limits_y = np.percentile(df.loc[:, b], [3, 97])
+
+    # Based on how much it drives the correlation
+    pearson_terms = (df.loc[:, a] - df.loc[:, a].mean()) * (df.loc[:, b] - df.loc[:, b].mean())
+    # limits_p = np.percentile(np.linspace(pearson_terms.min(), pearson_terms.max()), [10, 80])
+    limits_p = np.percentile(pearson_terms, [5, 95])
+
+    cond_x = (df.loc[:, a] < limits_x[0]) | (df.loc[:, a] > limits_x[1])
+    cond_y = (df.loc[:, b] < limits_y[0]) | (df.loc[:, b] > limits_y[1])
+    cond_p = (pearson_terms < limits_p[0]) | (pearson_terms > limits_p[1])
+
+    # Final mask
+    annot = cond_x | cond_y #| cond_p
+
+    # List of annotations for later adjustment
+    annot_list = []
+
+    # Annotate labels
+    for i in range(len(df)):
+        if annot[i]:
+            annot_list.append(
+                            plt.annotate(
+                                df.loc[i, "label"].replace("_", " "),
+                                xy=[df.loc[i, a], df.loc[i, b]],
+                                        )
+                            )
+
+    # Adjust labels to avoid overlap
+    adjust_text(annot_list, arrowprops=dict(arrowstyle="-", linewidth=1,
+                                            connectionstyle="angle3"),
+                expand_points=[2, 3.5])
+
+    # -----
+
+    # Annotate stats to fig
+    text = f"r = {corr_matrix.iloc[i1, i2]:.2f}\n{pformat(corr_pvals.iloc[i1, i2])}"
+    plt.annotate(text, xy=[0.05, 0.9], xycoords="axes fraction",
+                 bbox=dict(boxstyle='square', fc='white'))
+
+    # Formatting
+    plt.xlabel(a.replace("_", " @").replace("diab", "T2DM") \
+               .replace("@M", "(Males)").replace("@F", "(Females)"))
+    plt.ylabel(b.replace("_", " @").replace("diab", "T2DM") \
+               .replace("@M", "(Males)").replace("@F", "(Females)"))
+
+    xlim = np.array(plt.gca().get_xlim())
+    xpad = 0.05*(xlim[1] - xlim[0])
+    plt.xlim(xlim[0] - xpad, xlim[1] + xpad)
+
     plt.tight_layout()
     plt.savefig(OUTDIR + f"scatterplots/scatter_{PC}_strat{EXTRA}_{a}_{b}.pdf")
     plt.close("all")

@@ -201,6 +201,68 @@ for i, feat in enumerate(features):
         regressors_matched.to_csv(OUTDIR + \
             f"regressors/pub_meta_med_cognition_matched_regressors_{feat}_{CTRS}.csv")
 
+# Reset style
+plt.close("all")
+plt.style.use("default")
+plt.rcdefaults()
+
+# <><><><><><><><>
+raise
+# <><><><><><><><>
+
+
+# %%
+# =============================================================================
+# Sample sizes
+# =============================================================================
+
+# Set style
+from helpers.plotting_style import plot_pars, plot_funcs
+
+# Iterate over all features
+for i, feat in enumerate(features):
+
+    # Load regressors
+    regressors_matched = pd.read_csv(OUTDIR + \
+            f"regressors/pub_meta_med_cognition_matched_regressors_{feat}_{CTRS}.csv",
+            index_col=0)
+
+    # Figure
+    plt.figure(figsize=(3.5, 2.25))
+
+    # Plot
+    sns.histplot(data=regressors_matched.query(f'{CTRS}==1'),
+                 x="age", hue="sex",
+                 multiple="stack", bins=np.arange(50, 85, 5),
+                 palette=["indianred", "dodgerblue"], zorder=2)
+
+    # Annotate total sample size
+    text = f"N={regressors_matched.query(f'{CTRS}==1').shape[0]}"
+    text = text + " (T2DM+)" if CTRS == "diab" else text
+    plt.annotate(text, xy=[0.66, 0.9], xycoords="axes fraction", fontsize=7)
+
+    # Legend
+    legend_handles = plt.gca().get_legend().legendHandles
+    plt.legend(handles=legend_handles, labels=["Females", "Males"], loc=2,
+               fontsize=8)
+
+    # Formatting
+    plt.xlabel("Age")
+    plt.ylim([0, 80])
+    plt.grid(zorder=1)
+    plt.title(f'{feat.replace("_", " ")}', fontsize=10)
+
+    # Save
+    plt.tight_layout(rect=[0, 0.00, 1, 0.995])
+    plt.savefig(OUTDIR + f"stats_misc/pub_meta_med_cognition_sample_sizes_{feat}" \
+                f"_{CTRS}.pdf",
+                transparent=True)
+
+# Reset style
+plt.close("all")
+plt.style.use("default")
+plt.rcdefaults()
+
 # %%
 # =============================================================================
 # Fit models

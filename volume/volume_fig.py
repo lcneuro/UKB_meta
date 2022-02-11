@@ -33,7 +33,7 @@ HOMEDIR = os.path.abspath(os.path.join(__file__, "../../../")) + "/"
 SRCDIR = HOMEDIR + "results/volume/stats/"
 OUTDIR = HOMEDIR + "results/volume/"
 
-raise
+# raise
 
 # %%
 # Settings

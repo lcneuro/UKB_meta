@@ -38,7 +38,7 @@ PTHR = 0.05
 BATCH = 8
 UC = 12
 GM_THR = 0.5  # GM threshold
-cut_coords = (-2, 11, 16)
+
 
 #raise
 
@@ -103,6 +103,7 @@ suffix1 = f"batch{BATCH}_GM_{GM_THR}_contrast_age"
 suffix2 = f"batch{BATCH}_GM_{GM_THR}_contrast_diab"
 cmap = 'PiYG_r'
 vm = 3
+cut_coords = (-2, 11, 16)
 
 # Load images
 back = image.load_img(OUTDIR \
@@ -152,7 +153,7 @@ plt.savefig(OUTDIR + f'figures/JAMA_meta_neurofunction_{MDL}_age-diab_overlap.pd
 # Inputs
 suffix1 = "contrast_age"
 suffix2 = "contrast_diab"
-
+cut_coords = (15, 18, 9)
 #cmap = 'PRGn'
 vm = 3
 

@@ -32,13 +32,14 @@ get_ipython().run_line_magic('cd', '..')
 from helpers.regression_helpers import check_covariance, match, match_cont, \
 check_assumptions, detrender
 from helpers.data_loader import DataLoader
+from helpers.plotting_style import plot_pars, plot_funcs
 get_ipython().run_line_magic('cd', 'volume')
 
 # =============================================================================
 # Setup
 # =============================================================================
 
-plt.style.use("ggplot")
+# plt.style.use("ggplot")
 
 # Filepaths
 HOMEDIR = os.path.abspath(os.path.join(__file__, "../../../")) + "/"
@@ -52,17 +53,17 @@ T1DM_CO = 40  # Cutoff age value for age of diagnosis of diabetes to separate
 AGE_CO = 50  # Age cutoff (related to T1DM_CO) to avoid T2DM low duration subjects
 PARC = 46  # Type of parcellation to use, options: 46 or 139
 ## to exlucde due to abnormal total gray matter volumes
-STRAT_SEX = True # Stratify sex or not #TODO: need to adjust detrending accordinlgy
+STRAT_SEX = False # Stratify sex or not #TODO: need to adjust detrending accordinlgy
 SEX = 1  # If stratifying per sex, which sex to keep
 
-EXTRA = "_M"  # Extra suffix for saved files
+EXTRA = ""  # Extra suffix for saved files
 excl_region = ["Pallidum"]  # Regions to exclude
 RLD = False  # Reload regressor matrices instead of computing them again
 
 print("\nRELOADING REGRESSORS!\n") if RLD else ...
 
 # <><><><><><><><>
-raise
+# raise
 # <><><><><><><><>
 
 
@@ -268,7 +269,63 @@ if CTRS == "sex":
 
 if RLD == False:
     # Save matched regressors matrix
-    regressors_matched.to_csv(OUTDIR + f"regressors/pub_meta_volume_matched_regressors_{CTRS}{EXTRA}.csv") # TODO
+    regressors_matched.to_csv(OUTDIR + f"regressors/pub_meta_volume_matched_regressors_{CTRS}{EXTRA}.csv")
+
+# <><><><><><><><>
+raise
+# <><><><><><><><>
+
+# %%
+# =============================================================================
+# Sample sizes
+# =============================================================================
+
+# If not separating per sex
+if ~STRAT_SEX:
+
+    # CTRS specific settings
+    dc = 1 if CTRS == "diab" else 0
+    ylim = 300 if CTRS == "diab" else 1500
+
+    # Load regressors
+    regressors_matched = pd.read_csv(
+            OUTDIR + f"regressors/pub_meta_volume_matched_regressors_{CTRS}{EXTRA}.csv"
+            )
+
+    # Figure
+    plt.figure(figsize=(3.5, 2.25))
+
+    # Plot
+    sns.histplot(data=regressors_matched.query(f'diab=={dc}'),
+                 x="age", hue="sex",
+                 multiple="stack", bins=np.arange(50, 85, 5),
+                 palette=["indianred", "dodgerblue"], zorder=2)
+
+    # Annotate total sample size and mean age
+    text = f"N={regressors_matched.query(f'diab=={dc}').shape[0]:,}"
+    text = text + " (T2DM+)" if CTRS == "diab" else text
+    text = text + f"\nMean age={regressors_matched.query(f'diab=={dc}')['age'].mean():.1f}y"
+    plt.annotate(text, xy=[0.66, 0.88], xycoords="axes fraction", fontsize=7, va="center")
+
+    # Legend
+    legend_handles = plt.gca().get_legend().legendHandles
+    plt.legend(handles=legend_handles, labels=["Females", "Males"], loc=2,
+               fontsize=8)
+
+    # Formatting
+    plt.xlabel("Age")
+    plt.ylim([0, ylim])
+    plt.grid(zorder=1)
+    plt.title("Gray Matter Volume", fontsize=10)
+
+    # Save
+    plt.tight_layout(rect=[0, 0.00, 1, 0.995])
+    plt.savefig(OUTDIR + f"stats_misc/pub_meta_volume_sample_sizes_{CTRS}.pdf",
+                transparent=True)
+
+    # Close all
+    plt.close("all")
+
 
 # %%
 # =============================================================================
@@ -280,8 +337,7 @@ print(f"Extracting volume values with contrast [{CTRS}] at parcellation [{PARC}]
 
 # Load regressors
 regressors_matched = pd.read_csv(
-        OUTDIR + f"regressors/pub_meta_volume_matched_regressors_{CTRS}{EXTRA}.csv" # TODO
-        )
+        OUTDIR + f"regressors/pub_meta_volume_matched_regressors_{CTRS}{EXTRA}.csv")
 
 # 46 parcellation
 # -------
@@ -360,6 +416,10 @@ if PARC == 139:
 # Status
 print(f"Fitting models for contrast [{CTRS}] at parcellation [{PARC}]\n")
 
+# Set style for plotting
+from helpers.plotting_style import plot_pars, plot_funcs
+lw=1.5
+
 # Dictionary to store stats
 feat_stats = {}
 
@@ -407,7 +467,7 @@ for i, feat in tqdm(enumerate(features), total=len(features), desc="Models fitte
             f"stats_misc/pub_meta_volume_stats_assumptions_{feat}_{CTRS}_{PARC}{EXTRA}"
             )
 
-    # Plot across age
+    # Lineplot across age
     if CTRS == "diab":
         gdf = sdf \
             [[feat, "age", "diab"]] \
@@ -416,16 +476,27 @@ for i, feat in tqdm(enumerate(features), total=len(features), desc="Models fitte
                     })) \
             .sort_values(by="age")
 
-        plt.figure(figsize=(10, 7))
+        plt.figure(figsize=(3.5, 3))
         plt.title(feat)
         sns.lineplot(data=gdf, x="age_group", y=feat, hue="diab",
                      palette=sns.color_palette(["black", "red"]),
-                     ci=68, err_style="bars",
-                     marker="o", linewidth=2, markersize=6,
-                     err_kws={"capsize": 3, "capthick": 2, "elinewidth": 2})
+                     ci=68, err_style="bars", marker="o",
+                     linewidth=1*lw, markersize=3 *lw, err_kws={"capsize": 2*lw,
+                         "capthick": 1*lw, "elinewidth": 1*lw})
+        legend_handles = plt.gca().get_legend().legendHandles
+        plt.legend(handles=legend_handles, labels=["HC", "T2DM+"], loc="best",
+                   fontsize=8, title="")
+        plt.xlabel("Age group")
+        plt.ylabel("Gray matter volume\n(mm3, normalized)")
+        plt.xticks(rotation=45)
+        plt.grid()
+        plt.title(feat.replace("_", " "))
+
         plt.tight_layout()
-        plt.savefig(OUTDIR + f"stats_misc/pub_meta_volume_age-diab-plot_{feat}_{PARC}{EXTRA}.pdf")
+        plt.savefig(OUTDIR + f"stats_misc/pub_meta_volume_age-diab-plot_{feat}_{PARC}{EXTRA}.pdf",
+                    transparent=True)
         plt.close()
+
 
     # Save results
     # -------
@@ -470,3 +541,4 @@ df_out = pd.DataFrame.from_dict(
 
 # Save outputs
 df_out.to_csv(OUTDIR + f"stats/pub_meta_volume_stats_{CTRS}_{PARC}{EXTRA}.csv")
+

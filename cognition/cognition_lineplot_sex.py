@@ -145,7 +145,7 @@ if RLD == False:
         df=regressors_detrended,
         main_vars=["sex", "diab"],
         vars_to_match=["age", "college", "htn"],
-        random_state=11
+        random_state=111
         )
 
     # Look at balance
@@ -324,12 +324,12 @@ sns.lineplot(data=gdf, x="age_group", y="score",
 # ----
 
 # Title
-plt.title("Cognitive Performance across\nAge, T2DM Status and Sex\n" \
-          f"N={ss} (Exact Matched)", x=0.42, y=1.05)
+plt.title("Cognitive Performance vs Age, T2DM Status and Sex\n" \
+          f"N={ss} (Per Group, Exact Matched)", x=0.37, y=1.05)
 
 plt.xlabel("Age group (year)")
 
-plt.ylabel("Cognitive Performance\nCombined Score from Multiple Tasks ")
+plt.ylabel("Cognitive performance\ncombined score from five tasks ")
 plt.gca().yaxis.set_major_formatter(mtc.FuncFormatter
        (lambda x, pos: f"{x/1e5:.1f}"))
 plt.annotate("×10$^5$", xy=[0, 1.03], xycoords="axes fraction",

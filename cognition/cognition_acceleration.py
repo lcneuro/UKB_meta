@@ -173,7 +173,7 @@ if RLD == False:
             main_vars=["duration_group"],
             vars_to_match=["age", "sex", "college", "htn"],
                 value=1000,
-                random_state=10
+                random_state=111
             )
 
 if RLD == False:
@@ -274,7 +274,7 @@ print(f"Acceleration: +{acc_res:.2g} year/year", f'p={results.pvalues["duration"
 # Unpack plotting utils
 fs, lw = plot_pars
 p2star, colors_from_values, float_to_sig_digit_str, pformat = plot_funcs
-lw = lw*1.5
+lw = lw*1.0
 
 # Get data
 gdf = df.copy()
@@ -299,7 +299,7 @@ palette = sns.color_palette(["black", "orange", "red"])
 # -----
 
 # Make figure
-plt.figure(figsize=(4.25, 5.5))
+plt.figure(figsize=(5, 4))
 
 # Create plot
 sns.lineplot(data=gdf, x="age_group", y=feat,
@@ -312,13 +312,13 @@ sns.lineplot(data=gdf, x="age_group", y=feat,
 # Annotate stats
 tval, pval = results.tvalues["duration"], results.pvalues["duration"]
 text = f"T2DM disease duration\nas a continuous linear factor:\n" \
-       f"$\mathbf{{H_0}}$:  $\mathrm{{\\beta}}$$\mathbf{{_t}}$ = 0\n" \
-       f"$\mathbf{{H_1}}$:  $\mathrm{{\\beta}}$$\mathbf{{_t}}$ ≠ 0\n" \
+       f"${{H_0}}$:  $\mathrm{{\\beta}}$$\mathbf{{_t}}$ = 0\n" \
+       f"${{H_1}}$:  $\mathrm{{\\beta}}$$\mathbf{{_t}}$ ≠ 0\n" \
        f"T = {tval:.1f}\n{pformat(pval)}" \
        f"{p2star(pval)}"
 
-plt.annotate(text, xycoords="axes fraction", xy=[0.279, 0.03],
-             fontsize=8*fs, fontweight="bold", ha="center")
+plt.annotate(text, xycoords="axes fraction", xy=[0.29, 0.03],
+             fontsize=8*fs, fontweight="regular", ha="center")
 
 
 # Format
@@ -329,21 +329,21 @@ ttl = plt.title("Cognitive Performance across Age and\nT2DM Disease Duration:" \
           f"UK Biobank dataset\n"
           f"N$_{{≥10 years}}$={int(gdf.shape[0]/3)}, " \
           f"N$_{{0-9 years}}$={int(gdf.shape[0]/3)}, " \
-          f"N$_{{HC}}$={int(gdf.shape[0]/3)}\n"
+          f"N$_{{HC}}$={int(gdf.shape[0]/3)}"
           )
 ttl.set_x(ttl.get_position()[0]-0.056)
 
 plt.xlabel("Age group (year)")
 #plt.ylabel("Gray matter cognition delineated\nbrain age (y)")
 
-plt.ylabel("Standardized cognitive performance score")
+plt.ylabel("Cognitive performance\ncombined score from five tasks")
 
 legend_handles, _ = plt.gca().get_legend_handles_labels()
 [ha.set_linewidth(5) for ha in legend_handles]
 
 plt.legend(title="T2DM disease duration",
-           handles=legend_handles[::-1],
-           labels=["≥10 years", "0-9 years", "HC"],
+           handles=legend_handles,# [::-1],
+           labels=["HC", "0-9 years", "≥10 years"],
            loc=1)
 
 plt.gca().xaxis.tick_bottom()

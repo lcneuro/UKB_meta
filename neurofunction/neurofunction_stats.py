@@ -39,6 +39,7 @@ get_ipython().run_line_magic('cd', '..')
 from helpers.regression_helpers import check_covariance, match, match_cont, \
     check_assumptions
 from helpers.data_loader import DataLoader
+from helpers.plotting_style import plot_pars, plot_funcs
 get_ipython().run_line_magic('cd', 'neurofunction')
 
 
@@ -46,7 +47,7 @@ get_ipython().run_line_magic('cd', 'neurofunction')
 # Setup
 # =============================================================================
 
-plt.style.use("ggplot")
+# plt.style.use("ggplot")
 
 # Filepaths
 HOMEDIR = os.path.abspath(os.path.join(__file__, "../../../")) + "/"
@@ -61,7 +62,7 @@ T1DM_CO = 40  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
 AGE_CO = 50  # Age cutoff (related to T1DM_CO) to avoid T2DM low duration subjects
 
-CTRS = "sex"  # Contrast: diab or age
+CTRS = "diab"  # Contrast: diab or age
 CT = 12  # Cluster threshold for group level analysis (in voxels?)
 PTHR = 0.05  # Significance threshold for p values
 GM_THR = 0.5  # Threshold for gm mask. Voxels with Probability above this
@@ -69,7 +70,7 @@ MDL = "ALFF"  # Modality
 STRAT_SEX = False  # Stratify sex or not #TODO: need to adjust detrending accordinlgy
 SEX = 1  # If stratifying per sex, which sex to keep
 
-EXTRA = "_M"
+EXTRA = ""
 
 VOLUME = 1000  # Cluster volume, mm3
 VOXEL_DIM = 2.4  # Voxel dimension in work space, assuming cubic voxels, mm
@@ -289,7 +290,63 @@ if RLD == False:
     # Status
     print("Matching performed.")
 
+# <><><><><><><><>
+# raise
+# <><><><><><><><>
 
+# %%
+# =============================================================================
+# Sample sizes
+# =============================================================================
+
+if ~STRAT_SEX:
+
+
+    # CTRS specific settings
+    dc = 1 if CTRS == "diab" else 0
+    ylim = 300 if CTRS == "diab" else 1500
+
+    # Load regressors
+    regressors_matched = pd.read_csv(
+            OUTDIR + f"regressors/pub_meta_neurofunction_matched_regressors_{CTRS}{EXTRA}.csv"
+            )
+
+    # Figure
+    plt.figure(figsize=(3.5, 2.25))
+
+    # Plot
+    sns.histplot(data=regressors_matched.query(f'diab=={dc}'),
+                 x="age", hue="sex",
+                 multiple="stack", bins=np.arange(50, 85, 5),
+                 palette=["indianred", "dodgerblue"], zorder=2)
+
+    # Annotate total sample size
+    text = f"N={regressors_matched.query(f'diab=={dc}').shape[0]:,}"
+    text = text + " (T2DM+)" if CTRS == "diab" else text
+    text = text + f"\nMean age={regressors_matched.query(f'diab=={dc}')['age'].mean():.1f}y"
+    plt.annotate(text, xy=[0.66, 0.88], xycoords="axes fraction", fontsize=7, va="center")
+
+    # Legend
+    legend_handles = plt.gca().get_legend().legendHandles
+    plt.legend(handles=legend_handles, labels=["Females", "Males"], loc=2,
+               fontsize=8)
+
+    # Formatting
+    plt.xlabel("Age")
+    plt.ylim([0, ylim])
+    plt.grid(zorder=1)
+    plt.title("Neurofunction", fontsize=10)
+
+    # Save
+    plt.tight_layout(rect=[0, 0.00, 1, 0.995])
+    plt.savefig(OUTDIR + f"stats_misc/pub_meta_neurofunction_sample_sizes_{CTRS}.pdf",
+                transparent=True)
+
+    # Close all
+    plt.close("all")
+
+
+# %%
 # =============================================================================
 # Analysis
 # =============================================================================
@@ -384,15 +441,21 @@ print("Finished with extracting basic results.")
 #  Check assumptions in maunally selected clusters
 # =============================================================================
 
+# Set style for plotting
+from helpers.plotting_style import plot_pars, plot_funcs
+lw=1.5
+
 # Create labeled mask for each region
 # ------
 
 # Define clusters to look at
 clusters_dict = {
-        "Caudate": [11, 3, 16],
-        "Orbitofrontal_Cortex": [8, 12, -18],
-        "Premotor_Cortex": [-52, 10, 28],
-        "Posterior_Cingulate_Gyrus": [-4, -34, 32]
+        "Caudate_R": [11, 3, 16],
+        "Orbitofrontal_Cortex_R": [8, 12, -20],
+        "Subgenual_Area_R": [4, 7, -11],
+        "Premotor_Cortex_L": [-52, 10, 28],
+        "Posterior_Cingulate_Gyrus_L": [-4, -34, 32],
+        "Brainstem": [2, -32, -8]
             }
 
 # Status
@@ -494,7 +557,7 @@ signal_dict = {}
 # Iterate through all subjects
 for i, subject in tqdm(enumerate(regressors_matched["subject_label"]),
                        total=len(regressors_matched["subject_label"]),
-                       desc="{CTRS}{EXTRA}cting signal from subject: "):
+                       desc="extracting signal from subject: "):
 
     # Apply masking to ALFF image
     signal = label_masker.fit_transform([imgs[i]])
@@ -558,26 +621,37 @@ for label in clusters["label"]:
         f"stats_misc/pub_meta_neurofunction_stats_assumptions_{label}_{CTRS}{EXTRA}"
         )
 
+    # Status
+    print(f"Visualizing relationships for {label}.")
+
+    # Lineplot across age
     if CTRS == "diab":
+        gdf = df \
+            [[f"{label}", "age", "diab"]] \
+            .pipe(lambda df: df.assign(**{"age_group":
+                    pd.cut(df["age"], bins=np.arange(0, 100, 5)).astype(str)
+                    })) \
+            .sort_values(by="age")
 
-        # Status
-        print(f"Visualizing relationships for {label}.")
+        plt.figure(figsize=(3.5, 3))
+        plt.title(f"{label}")
+        sns.lineplot(data=gdf, x="age_group", y=f"{label}", hue="diab",
+                     palette=sns.color_palette(["black", "red"]),
+                     ci=68, err_style="bars", marker="o",
+                     linewidth=1*lw, markersize=3 *lw, err_kws={"capsize": 2*lw,
+                         "capthick": 1*lw, "elinewidth": 1*lw})
+        legend_handles = plt.gca().get_legend().legendHandles
+        plt.legend(handles=legend_handles, labels=["HC", "T2DM+"], loc="best",
+                   fontsize=8, title="")
+        plt.xlabel("Age group")
+        plt.ylabel("Brain Activation (ALFF)")
+        plt.xticks(rotation=45)
+        plt.grid()
+        plt.title(label.replace("_", " "))
 
-        # Bin age
-        bins = np.arange(0, 100, 5)
-        df["age_group"] = pd.cut(df["age"], bins).astype(str)
-
-        # Sort per age
-        df = df.sort_values(by="age")
-
-        # Plot for age*diabetes for current label
-        plt.figure()
-        sns.lineplot(data=df, x="age_group", y=f"{label}",
-                   hue="diab", ci=68, palette=sns.color_palette(["black", "red"]),
-                   err_style="bars", marker="o", sort=False,
-                   err_kws={"capsize": 5}) \
-
-        plt.savefig(OUTDIR + f"stats_misc/pub_meta_neurofunction_age-diab-plot_{label}{EXTRA}.pdf")
+        plt.tight_layout()
+        plt.savefig(OUTDIR + f"stats_misc/pub_meta_neurofunction_age-diab-plot_" \
+                    f"{label}{EXTRA}.pdf", transparent=True)
         plt.close()
 
 # Status
