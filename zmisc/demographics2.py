@@ -30,6 +30,7 @@ T1DM_CO = 40  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
 AGE_CO = 50  # Age cutoff (related to T1DM_CO) to avoid T2DM low duration subjects
 
+# raise
 # %%
 # =============================================================================
 # Load data
@@ -64,6 +65,7 @@ CTRS = "metfonly_unmed"  # Contrast: diab or age
 med = pd.read_csv(SRCDIR + f"med/{CTRS}.csv")[["eid", CTRS]]
 df_med = df.merge(med, on="eid")
 
+
 # %%
 # =============================================================================
 # Run queries
@@ -95,6 +97,15 @@ df["duration"].describe()
 
 # Unmedicated vs Metformin alone
 df_med.groupby(CTRS)["eid"].count()
+
+# Other
+
+# df_med.query("metfonly_unmed == 1")["duration"].describe()
+# df.query("diab==1")
+# df.groupby(["htn", "diab"]).count()
+# age.quantile(q=0.01)
+# age.describe()
+
 
 # %%
 # Cognition specific sample sizes

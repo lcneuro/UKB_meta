@@ -297,7 +297,7 @@ gdf = df \
     .sort_values(by=["age", "group"]) \
     .query('age_group not in ["(40, 45]"]') \
     .query('age_group not in ["(40, 45]", "(45, 50]"]') \
-    .query('age_group not in ["(40, 45]", "(45, 50]", "(75, 80]"]')
+    # .query('age_group not in ["(40, 45]", "(45, 50]", "(75, 80]"]')
 
 
 # Sample sizes
@@ -310,7 +310,7 @@ palette = sns.color_palette(["coral", "maroon", "dodgerblue", "navy"])
 # -----
 
 # Make figure
-plt.figure(figsize=(3.625, 5))
+plt.figure(figsize=(5, 4))
 
 # Create plot
 sns.lineplot(data=gdf, x="age_group", y="score",
@@ -329,11 +329,11 @@ plt.title("Cognitive Performance vs Age, T2DM Status and Sex\n" \
 
 plt.xlabel("Age group (year)")
 
-plt.ylabel("Cognitive performance\ncombined score from five tasks ")
+plt.ylabel("Cognitive performance\n(combined score from five tasks)")
 plt.gca().yaxis.set_major_formatter(mtc.FuncFormatter
-       (lambda x, pos: f"{x/1e5:.1f}"))
-plt.annotate("×10$^5$", xy=[0, 1.03], xycoords="axes fraction",
-             fontsize=8*fs, va="center")
+       (lambda x, pos: f"{x:.2f}"))
+# plt.annotate("×10$^5$", xy=[0, 1.03], xycoords="axes fraction",
+#              fontsize=8*fs, va="center")
 
 legend_handles, _ = plt.gca().get_legend_handles_labels()
 [ha.set_linewidth(5) for ha in legend_handles]
@@ -344,7 +344,7 @@ plt.legend(handles=legend_handles,
 
 plt.gca().xaxis.tick_bottom()
 plt.gca().yaxis.tick_left()
-plt.xticks(rotation=45)
+# plt.xticks(rotation=45)
 
 for sp in ['bottom', 'top', 'left', 'right']:
     plt.gca().spines[sp].set_linewidth(0.75*lw)

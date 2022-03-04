@@ -341,12 +341,12 @@ sns.lineplot(data=gdf, x="age_group", y=feat,
 
 # Annotate stats
 tval, pval = results.tvalues["duration"], results.pvalues["duration"]
-text = f"T2DM disease duration\nas a continuous linear factor:\n" \
-       f"${{H_0}}$:  $\mathrm{{\\beta}}$${{_t}}$ = 0\n" \
-       f"${{H_1}}$:  $\mathrm{{\\beta}}$${{_t}}$ ≠ 0\n" \
-       f"T = {tval:.1f}; {pformat(pval)}{p2star(pval)}"
+text = (f"T2DM disease duration\nas a continuous linear factor:\n"
+       # f"${{H_0}}$:  $\mathrm{{\\beta}}$${{_t}}$ = 0\n" \
+       # f"${{H_1}}$:  $\mathrm{{\\beta}}$${{_t}}$ ≠ 0\n" \
+       f"T = {tval:.1f}; {pformat(pval)}{p2star(pval)}")
 
-plt.annotate(text, xycoords="axes fraction", xy=[0.23, 0.03],
+plt.annotate(text, xycoords="axes fraction", xy=[0.3, 0.1],
              fontsize=8*fs, fontweight="regular", ha="center")
 
 
@@ -355,8 +355,8 @@ plt.annotate(text, xycoords="axes fraction", xy=[0.23, 0.03],
 
 # Title
 ttl = plt.title("Gray Matter Atrophy across Age and T2DM Disease Duration:\n" \
-          f"UK Biobank Dataset \n"
-          f"    N$_{{≥10y}}$={int(gdf.shape[0]/3)}, " \
+          f"UK Biobank Dataset, "
+          f"N$_{{≥10y}}$={int(gdf.shape[0]/3)}, " \
           f"N$_{{0–9y}}$={int(gdf.shape[0]/3)}, " \
           f"N$_{{HC}}$={int(gdf.shape[0]/3)}"
           )
@@ -365,10 +365,10 @@ ttl.set_x(ttl.get_position()[0]-0.056)
 plt.xlabel("Age group (year)")
 #plt.ylabel("Gray matter volume delineated\nbrain age (y)")
 
-plt.ylabel("Gray matter volume (mm3, normalized for headsize)")
+plt.ylabel("Gray matter volume\n(mm3, normalized for headsize)")
 plt.gca().yaxis.set_major_formatter(mtc.FuncFormatter
        (lambda x, pos: f"{x/1e5:.1f}"))
-plt.annotate("×10$^5$", xy=[0, 1.03], xycoords="axes fraction",
+plt.annotate("×10$^5$", xy=[-0.09, .98], xycoords="axes fraction",
              fontsize=8*fs, va="center")
 
 legend_handles, _ = plt.gca().get_legend_handles_labels()
@@ -392,7 +392,7 @@ plt.tight_layout()
 # Save
 # ----
 
-plt.tight_layout(rect=[0, 0., 1, 0.99])
+plt.tight_layout(rect=[0.05, 0., 0.95, 0.99])
 plt.savefig(OUTDIR + "figures/JAMA_meta_figure_volume_acceleration.pdf",
             transparent=True)
 plt.close("all")

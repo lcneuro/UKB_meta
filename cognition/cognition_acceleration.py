@@ -284,7 +284,7 @@ gdf = gdf \
     .pipe(lambda df:
         df.assign(**{"age_group": pd.cut(df["age"], np.arange(0, 100, 5),
                include_lowest=True, precision=0).astype(str)})) \
-    .query('age_group not in ["(40, 45]", "(45, 50]", "(75, 80]"]')
+    # .query('age_group not in ["(40, 45]", "(45, 50]", "(75, 80]"]')
 
 # Sort
 gdf = gdf.sort_values(by=["age", "duration"], na_position="first")
@@ -311,13 +311,12 @@ sns.lineplot(data=gdf, x="age_group", y=feat,
 
 # Annotate stats
 tval, pval = results.tvalues["duration"], results.pvalues["duration"]
-text = f"T2DM disease duration\nas a continuous linear factor:\n" \
-       f"${{H_0}}$:  $\mathrm{{\\beta}}$$\mathbf{{_t}}$ = 0\n" \
-       f"${{H_1}}$:  $\mathrm{{\\beta}}$$\mathbf{{_t}}$ ≠ 0\n" \
-       f"T = {tval:.1f}\n{pformat(pval)}" \
-       f"{p2star(pval)}"
+text = (f"T2DM disease duration\nas a continuous linear factor:\n" \
+       # f"${{H_0}}$:  $\mathrm{{\\beta}}$$\mathbf{{_t}}$ = 0\n" \
+       # f"${{H_1}}$:  $\mathrm{{\\beta}}$$\mathbf{{_t}}$ ≠ 0\n" \
+       f"T = {tval:.1f}; {pformat(pval)}{p2star(pval)}")
 
-plt.annotate(text, xycoords="axes fraction", xy=[0.29, 0.03],
+plt.annotate(text, xycoords="axes fraction", xy=[0.3, 0.1],
              fontsize=8*fs, fontweight="regular", ha="center")
 
 
@@ -325,10 +324,10 @@ plt.annotate(text, xycoords="axes fraction", xy=[0.29, 0.03],
 # ----
 
 # Title
-ttl = plt.title("Cognitive Performance across Age and\nT2DM Disease Duration:" \
-          f"UK Biobank dataset\n"
-          f"N$_{{≥10 years}}$={int(gdf.shape[0]/3)}, " \
-          f"N$_{{0-9 years}}$={int(gdf.shape[0]/3)}, " \
+ttl = plt.title("Cognitive Performance across Age and T2DM Disease Duration:\n" \
+          f"UK Biobank dataset, "
+          f"N$_{{≥10y}}$={int(gdf.shape[0]/3)}, " \
+          f"N$_{{0-9y}}$={int(gdf.shape[0]/3)}, " \
           f"N$_{{HC}}$={int(gdf.shape[0]/3)}"
           )
 ttl.set_x(ttl.get_position()[0]-0.056)
@@ -336,7 +335,7 @@ ttl.set_x(ttl.get_position()[0]-0.056)
 plt.xlabel("Age group (year)")
 #plt.ylabel("Gray matter cognition delineated\nbrain age (y)")
 
-plt.ylabel("Cognitive performance\ncombined score from five tasks")
+plt.ylabel("Cognitive performance\n(combined score from five tasks)")
 
 legend_handles, _ = plt.gca().get_legend_handles_labels()
 [ha.set_linewidth(5) for ha in legend_handles]
@@ -359,7 +358,7 @@ plt.tight_layout()
 # Save
 # ----
 
-plt.tight_layout(rect=[0, 0., 1, 0.99])
+plt.tight_layout(rect=[0.05, 0., 0.95, 0.99])
 plt.savefig(OUTDIR + "figures/JAMA_meta_figure_cognition_acceleration.pdf",
             transparent=True)
 plt.close("all")

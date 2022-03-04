@@ -425,9 +425,17 @@ for c, combo in tqdm(enumerate(combos)):
     plt.annotate(text, xy=[0.05, 0.9], xycoords="axes fraction",
                  bbox=dict(boxstyle='square', fc='white'))
 
+    # Add dashed lines at 0, 0
+    plt.axhline(0, linestyle="--", lw=1, color="gray", zorder=1)
+    plt.axvline(0, linestyle="--", lw=1, color="gray", zorder=1)
+
     # Formatting
-    plt.xlabel(a.replace("_", " @").replace("diab", "T2DM"))
-    plt.ylabel(b.replace("_", " @").replace("diab", "T2DM"))
+    plt.xlabel(a.replace("_", " @").replace("diab", "T2DM") \
+               .replace("neurofunction", "Brain Activation (ALFF)") \
+                   + "\n(Beta coefficient)")
+    plt.ylabel(b.replace("_", " @").replace("diab", "T2DM") \
+               .replace("neurofunction", "Brain Activation (ALFF)") \
+                   + "\n(Beta coefficient)")
 
     xlim = np.array(plt.gca().get_xlim())
     xpad = 0.05*(xlim[1] - xlim[0])

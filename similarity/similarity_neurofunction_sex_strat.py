@@ -305,7 +305,7 @@ annot_df = pd.DataFrame(np.array(annot_text).reshape(corr_matrix.shape))
 plt.figure(figsize=(4.8, 4.2))
 #plt.rcParams['xtick.labelsize']=16
 #plt.rcParams['ytick.labelsize']=16
-plt.title(f"Correlation Based Similarities between\nNeurofunctional " \
+plt.title(f"Correlation Based Similarities between\nBrain Activation (ALFF) " \
           "Effects Associated with\nAge and T2DM, Quantified Separately for Sexes",
           )
 g = sns.heatmap(corr_matrix, vmin=-1, vmax=1, cmap="seismic", annot=annot_df,
@@ -359,11 +359,11 @@ for c, combo in tqdm(enumerate(combos)):
     # Decide which labels to annotate based on coords, to avoid overlapping text
     # Based on x coord
     # limits_x = np.percentile(np.linspace(df.loc[:, a].min(), df.loc[:, a].max(), 101), [2, 98])
-    limits_x = np.percentile(df.loc[:, a], [3, 97])
+    limits_x = np.percentile(df.loc[:, a], [1, 98])
 
     # Based on y coord
     # limits_y = np.percentile(np.linspace(df.loc[:, b].min(), df.loc[:, b].max(), 101), [2, 98])
-    limits_y = np.percentile(df.loc[:, b], [3, 97])
+    limits_y = np.percentile(df.loc[:, b], [1, 98])
 
     # Based on how much it drives the correlation
     pearson_terms = (df.loc[:, a] - df.loc[:, a].mean()) * (df.loc[:, b] - df.loc[:, b].mean())
@@ -372,7 +372,7 @@ for c, combo in tqdm(enumerate(combos)):
 
     cond_x = (df.loc[:, a] < limits_x[0]) | (df.loc[:, a] > limits_x[1])
     cond_y = (df.loc[:, b] < limits_y[0]) | (df.loc[:, b] > limits_y[1])
-    cond_p = (pearson_terms < limits_p[0]) | (pearson_terms > limits_p[1])
+    # cond_p = (pearson_terms < limits_p[0]) | (pearson_terms > limits_p[1])
 
     # Final mask
     annot = cond_x | cond_y #| cond_p
@@ -402,17 +402,25 @@ for c, combo in tqdm(enumerate(combos)):
     plt.annotate(text, xy=[0.05, 0.9], xycoords="axes fraction",
                  bbox=dict(boxstyle='square', fc='white'))
 
+    # Add dashed lines at 0, 0
+    plt.axhline(0, linestyle="--", lw=1, color="gray", zorder=1)
+    plt.axvline(0, linestyle="--", lw=1, color="gray", zorder=1)
+
     # Formatting
     plt.xlabel(a.replace("_", " @").replace("diab", "T2DM") \
-               .replace("@M", "(Males)").replace("@F", "(Females)"))
+               .replace("@M", "(Males)").replace("@F", "(Females)") \
+               .replace("neurofunction", "Brain Activation (ALFF)") \
+                   + "\n(Beta coefficient)")
     plt.ylabel(b.replace("_", " @").replace("diab", "T2DM") \
-               .replace("@M", "(Males)").replace("@F", "(Females)"))
+               .replace("@M", "(Males)").replace("@F", "(Females)") \
+               .replace("neurofunction", "Brain Activation (ALFF)") \
+                   + "\n(Beta coefficient)")
 
     xlim = np.array(plt.gca().get_xlim())
     xpad = 0.05*(xlim[1] - xlim[0])
     plt.xlim(xlim[0] - xpad, xlim[1] + xpad)
 
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0, 0.96, 1])
     plt.savefig(OUTDIR + f"scatterplots/scatter_{PC}_strat{EXTRA}_{a}_{b}.pdf")
     plt.close("all")
 

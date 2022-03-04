@@ -335,7 +335,7 @@ if ~STRAT_SEX:
     plt.xlabel("Age")
     plt.ylim([0, ylim])
     plt.grid(zorder=1)
-    plt.title("Neurofunction", fontsize=10)
+    plt.title("Brain Activation (ALFF)", fontsize=10)
 
     # Save
     plt.tight_layout(rect=[0, 0.00, 1, 0.995])

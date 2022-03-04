@@ -227,7 +227,7 @@ ax.set_xlabel("Percentage difference in\ngray matter volume\nT2DM+ vs. HC (%)")
 plt.gcf().set_size_inches(7.25, 9)
 
 # Add common suptitle
-plt.suptitle("Region Specific Gray Matter Volume Changes\Associated with Age and T2DM,\n" \
+plt.suptitle("Region Specific Gray Matter Volume Changes Associated with Age and T2DM,\n" \
              "Quantified Separately for Sexes, UK Biobank", va="top", y=0.985)
 
 ## Add common x label

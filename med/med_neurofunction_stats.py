@@ -263,7 +263,7 @@ plt.legend(handles=legend_handles, labels=["Females", "Males"], loc=2,
 plt.xlabel("Age")
 plt.ylim([0, 80])
 plt.grid(zorder=1)
-plt.title("Neurofunction", fontsize=10)
+plt.title("Brain Activation (ALFF)", fontsize=10)
 
 # Save
 plt.tight_layout(rect=[0, 0.00, 1, 0.995])
