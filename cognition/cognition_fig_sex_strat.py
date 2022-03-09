@@ -48,10 +48,10 @@ ylabeltexts = [
         "Percentage difference in cognitive\nperformance T2DM+ vs. HC (%)",
         ]
 
-x_dodge = 0.15  # Extent of dodge for hue
+x_dodge = 0.18  # Extent of dodge for hue
 colors = ["RdBu_r", "RdBu", "RdBu_r", "RdBu"]
 ylims = [[-2.5, 0.3], [-2.5, 0.3], [-23.0, 4.5], [-23.0, 4.5]]
-sfs = [1e4, 1e4, 0.8e3, 0.8e3]  # Marker size factors
+sfs = [4e0, 4e0, 1e0, 1e0]  # Marker size factors
 sfscf = [5e3, 5e3, 1.5e3, 1.5e3]  # Marker size scale factors
 sdxo = [0.76, 0.76, 0.79, 0.79]  # x axis offset of scale info
 # sfscf2 = [1e4, 1e4, 1e3, 1e3]  # Marker size scale factors
@@ -161,7 +161,7 @@ for c, case in enumerate(cases):
         conf_dist = abs(y - np.array(conf_int))[:, None]
 
         # Blob for representing value and sample size
-        plt.scatter(x=x-(x_dodge-di*2*x_dodge), y=y, s=sum(ss)**2/sfs[c], color=colors_all[i])
+        plt.scatter(x=x-(x_dodge-di*2*x_dodge), y=y, s=sum(ss)/sfs[c], color=colors_all[i])
                     #"mediumblue")
 
         # Plot center of estimate
@@ -184,9 +184,9 @@ for c, case in enumerate(cases):
         text = p2star(p)
         text_x = x + 0.00 -(x_dodge-di*2*x_dodge)
         if y < 0:
-            text_y = min(min(conf_int), y-np.sqrt(sum(ss)**2/sfs[c])/150) - textpads[c]
+            text_y = min(min(conf_int), y-np.sqrt(sum(ss)/sfs[c])/2e2) - textpads[c]
         else:
-            text_y = max(max(conf_int), y+np.sqrt(sum(ss)**2/sfs[c])/150) + textpads[c]
+            text_y = max(max(conf_int), y+np.sqrt(sum(ss)/sfs[c])/1.5) + textpads[c]
 
         va = "top" if y < 0 else "bottom"
         plt.annotate(text, xy=[text_x, text_y], fontsize=8*fs,
@@ -227,7 +227,7 @@ for c, case in enumerate(cases):
     plt.gca().set_axisbelow(True)
 
     # Add scale
-    plt.scatter(x=len(df)-sdxo[c], y=ylims[c][0] * 0.88, s=sfscf[c]**2/sfs[c],
+    plt.scatter(x=len(df)-sdxo[c], y=ylims[c][0] * 0.88, s=sfscf[c]/sfs[c],
                 color="gray")
 #    plt.scatter(x=len(df)-sdxo2[c], y=ylims[c][0] * 0.88, s=sfscf2[c]**2/sfs[c],
 #                color="lightgray")
@@ -254,4 +254,4 @@ plt.tight_layout(h_pad=2)
 plt.savefig(OUTDIR + "figures/JAMA_meta_figure_cognition_sex_strat.pdf",
             transparent=True)
 
-plt.close()
+# plt.close()

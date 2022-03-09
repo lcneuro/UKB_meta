@@ -43,7 +43,7 @@ ylabeltexts = [
         ]
 colors = ["RdBu_r"]
 ylims = [[-6, 10]]
-sfs = [1.5e5]  # Marker size factors
+sfs = [8e0]  # Marker size factors
 sfscf = [15000]  # Marker size scale factors
 sdxo = [0.76]  # x axis offset of scale info
 cms = [2]  # Colormap scaling to distort - gradient
@@ -151,7 +151,7 @@ for c, case in enumerate(cases):
             conf_dist = abs(y - np.array(conf_int))[:, None]
 
             # Blob for representing value and sample size
-            plt.scatter(x=x, y=y, s=sum(ss)**2/sfs[c], color=colors_all[i])
+            plt.scatter(x=x, y=y, s=sum(ss)/sfs[c], color=colors_all[i])
                         #"mediumblue")
 
             # Plot center of estimate
@@ -174,14 +174,14 @@ for c, case in enumerate(cases):
             text = p2star(p)
             text_x = x + 0.00
             if y < 0:
-                text_y = min(min(conf_int), y-np.sqrt(sum(ss)/sfs[c])/1) - textpads[c]
+                text_y = min(min(conf_int), y-np.sqrt(sum(ss)/sfs[c])/1e3) - textpads[c]
             else:
-                text_y = max(max(conf_int), np.sqrt(sum(ss)/sfs[c])/1) + textpads[c]
+                text_y = max(max(conf_int), y+np.sqrt(sum(ss)/sfs[c])/5e1) + textpads[c]
 
             va = "top" if y < 0 else "bottom"
             plt.annotate(text, xy=[text_x, text_y], fontsize=8*fs,
-                         ha="center", va=va, fontweight="bold",
-                         rotation=0)
+                          ha="center", va=va, fontweight="bold",
+                          rotation=0)
 
     # Format
 
@@ -214,7 +214,7 @@ for c, case in enumerate(cases):
     plt.gca().set_axisbelow(True)
 
     # Add scale
-    plt.scatter(x=len(df)-sdxo[c], y=ylims[c][0] * 0.88, s=sfscf[c]**2/sfs[c],
+    plt.scatter(x=len(df)-sdxo[c], y=ylims[c][0] * 0.88, s=sfscf[c]/sfs[c],
                 color="gray")
 #    plt.scatter(x=len(df)-sdxo2[c], y=ylims[c][0] * 0.88, s=sfscf2[c]**2/sfs[c],
 #                color="lightgray")

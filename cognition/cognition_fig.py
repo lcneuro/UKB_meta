@@ -48,20 +48,20 @@ ylabeltexts = [
         "Standardized mean difference\nT2DM+ vs. HC (Cohen's d)"
         ]
 colors = ["PiYG", "YlGnBu", "Purples"]
-ylims = [[-2.5, 0.3], [-23.0, 4.5], [-0.75, 0.2]]
-sfs = [1.5e4, 2e3, 0.4]  # Marker size factors
+ylims = [[-2.5, 0.3], [-23.0, 4.5], [-0.95, 0.2]]
+sfs = [3e0, 1e0, 0.02]  # Marker size factors
 sfscf = [5000, 2000, 25]  # Marker size scale factors
 sdxo = [0.76, 0.79, 0.94]  # x axis offset of scale info
 sfscf2 = [10000, 1000, 10]  # Marker size scale factors
 sdxo2 = [0.76, 0.75, 0.9]  # x axis offset of scale info
 cms = [20, 4, 1]  # Colormap scaling to distort - gradient
 cmo = [4.5, 2, 1]  # Colormap offset - intensity
-textpads = [-0.05, 1, 0.05]  # Padding for text along y axis
-xtickrots = [0, 0, 45]  # Rotation of xticks
+textpads = [-0.05, 1.5, 0.04]  # Padding for text along y axis
+xtickrots = [0, 0, 65]  # Rotation of xticks
 xtickvas = ["top", "top", "top"]  # Vertical alignment for xticks
-xtickpads = [0, 0, 0]  # Paddong fo xticks
+xtickpads = [0, 0, 0]  # Padding fo xticks
 
-#raise
+# raise
 
 # %%
 
@@ -168,7 +168,7 @@ for c, case in enumerate(cases):
             conf_dist = abs(y - np.array(conf_int))[:, None]
 
             # Blob for representing value and sample size
-            plt.scatter(x=x, y=y, s=sum(ss)**2/sfs[c], color=colors_all[i])
+            plt.scatter(x=x, y=y, s=sum(ss)/sfs[c], color=colors_all[i])
                         #"mediumblue")
 
             # Plot center of estimate
@@ -191,9 +191,9 @@ for c, case in enumerate(cases):
             text = p2star(p)
             text_x = x + 0.00
             if y < 0:
-                text_y = min(min(conf_int), y-np.sqrt(sum(ss)/sfs[c])/1) - textpads[c]
+                text_y = min(min(conf_int), y-np.sqrt(sum(ss)/sfs[c])/6e1) - textpads[c]
             else:
-                text_y = max(max(conf_int), np.sqrt(sum(ss)/sfs[c])/1) + textpads[c]
+                text_y = max(max(conf_int), y+np.sqrt(sum(ss)/sfs[c])/6e1) + textpads[c]
 
             va = "top" if y < 0 else "bottom"
             plt.annotate(text, xy=[text_x, text_y], fontsize=8*fs,
@@ -219,7 +219,7 @@ for c, case in enumerate(cases):
             conf_dist = abs(y - np.array(conf_int))[:, None]
 
             # Blob for representing value and sample size
-            plt.scatter(x=x, y=y, s=K**2/sfs[c], color=colors_all[i])
+            plt.scatter(x=x, y=y, s=K/sfs[c], color=colors_all[i])
 
             # Plot center of estimate
             plt.scatter(x=x, y=y, s=15*lw, color="k")
@@ -249,9 +249,9 @@ for c, case in enumerate(cases):
             text = p2star(p)
             text_x = x + 0.00
             if y < 0:
-                text_y = min(min(conf_int), y-K**2/sfs[c]/1.5e4) - textpads[c]
+                text_y = min(min(conf_int), y-np.sqrt(K/sfs[c])/2e2) - textpads[c]
             else:
-                text_y = max(max(conf_int), y-K**2/sfs[c]/3.4e-1) + textpads[c]
+                text_y = max(max(conf_int), y-K/sfs[c]/3.4e-1) + textpads[c]
             va = "top" if y < 0 else "bottom"
             plt.annotate(text, xy=[text_x, text_y], fontsize=8*fs,
                          ha="center", va=va, fontweight="bold",
@@ -290,7 +290,7 @@ for c, case in enumerate(cases):
     plt.gca().set_axisbelow(True)
 
     # Add scale
-    plt.scatter(x=len(df)-sdxo[c], y=ylims[c][0] * 0.88, s=sfscf[c]**2/sfs[c],
+    plt.scatter(x=len(df)-sdxo[c], y=ylims[c][0] * 0.88, s=sfscf[c]/sfs[c],
                 color="gray")
 #    plt.scatter(x=len(df)-sdxo2[c], y=ylims[c][0] * 0.88, s=sfscf2[c]**2/sfs[c],
 #                color="lightgray")
