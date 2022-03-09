@@ -135,7 +135,7 @@ for c, case in enumerate(cases):
     # Add new line character into x labels
     df["label"] = df["label"].str.replace("_", "\n")
     df["label"] = df["label"].str.replace(" ", "\n")
-    df["label"] = df["label"].str.replace("Short\nTerm\nMemory", "Short-Term\nMemory")
+#    df["label"] = df["label"].str.replace("Short\nTerm\nMemory", "Short-Term\nMemory")
 
     # Sort labels alphabetically
 #    df = df.sort_values(by="label", ignore_index=True)

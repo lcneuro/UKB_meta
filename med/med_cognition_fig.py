@@ -44,11 +44,11 @@ ylabeltexts = [
         ]
 colors = ["PRGn"]
 ylims = [[-35, 15]]
-sfs = [2e2]  # Marker size factors
+sfs = [5e-1]  # Marker size factors
 sfscf = [500]  # Marker size scale factors
 sdxo = [1.35]  # x axis offset of scale info
 textpads = [0.1]  # Padding for text along y axis
-xtickrots = [45]  # Rotation of xticks
+xtickrots = [55]  # Rotation of xticks
 xtickvas = ["top"]  # Vertical alignment for xticks
 xtickpads = [0]  # Paddong fo xticks
 
@@ -57,7 +57,7 @@ label_order = [
         "Executive\nFunction",
         "Processing\nSpeed",
         "Reaction\nTime",
-        "Short-Term\nMemory",
+        "Numeric\nMemory",
         "Abstract\nReasoning"
         ]
 
@@ -139,7 +139,7 @@ for c, case in enumerate(cases):
         conf_dist = abs(y - np.array(conf_int))[:, None]
 
         # Blob for representing value and sample size
-        plt.scatter(x=x, y=y, s=sum(ss)**2/sfs[c], color=colors_all[i])
+        plt.scatter(x=x, y=y, s=sum(ss)/sfs[c], color=colors_all[i])
                     #"mediumblue")
 
         # Plot center of estimate
@@ -213,7 +213,7 @@ for c, case in enumerate(cases):
                 )
 
     # Add scale
-    plt.scatter(x=len(df)-sdxo[c], y=ylims[c][0] * 0.94, s=sfscf[c]**2/sfs[c],
+    plt.scatter(x=len(df)-sdxo[c], y=ylims[c][0] * 0.94, s=sfscf[c]/sfs[c],
                 color="gray")
 
     plt.annotate(text=f"Scale:\nN={sfscf[c]}",

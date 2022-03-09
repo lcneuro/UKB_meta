@@ -57,7 +57,7 @@ sdxo2 = [0.76, 0.75, 0.9]  # x axis offset of scale info
 cms = [20, 4, 1]  # Colormap scaling to distort - gradient
 cmo = [4.5, 2, 1]  # Colormap offset - intensity
 textpads = [-0.05, 1.5, 0.04]  # Padding for text along y axis
-xtickrots = [0, 0, 65]  # Rotation of xticks
+xtickrots = [0, 0, 55]  # Rotation of xticks
 xtickvas = ["top", "top", "top"]  # Vertical alignment for xticks
 xtickpads = [0, 0, 0]  # Padding fo xticks
 
@@ -142,7 +142,7 @@ for c, case in enumerate(cases):
     # Add new line character into x labels
     df["label"] = df["label"].str.replace("_", "\n")
     df["label"] = df["label"].str.replace(" ", "\n")
-    df["label"] = df["label"].str.replace("Short\nTerm\nMemory", "Short-Term\nMemory")
+#    df["label"] = df["label"].str.replace("Short\nTerm\nMemory", "Short-Term\nMemory")
 
     # Sort labels alphabetically
 #    df = df.sort_values(by="label", ignore_index=True)

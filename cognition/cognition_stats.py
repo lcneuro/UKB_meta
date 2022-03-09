@@ -46,7 +46,7 @@ CTRS = "diab"  # Contrast: diab or age
 T1DM_CO = 40  # Cutoff age value for age of diagnosis of diabetes to separate
 # T1DM from T2DM. Explained below in more details.
 AGE_CO = 50  # Age cutoff (related to T1DM_CO) to avoid T2DM low duration subjects
-STRAT_SEX = 0 # Stratify sex or not #TODO: need to adjust detrending accordinlgy
+STRAT_SEX = False # Stratify sex or not #TODO: need to adjust detrending accordinlgy
 SEX = 0  # If stratifying per sex, which sex to keep
 
 EXTRA = ""  # Extra suffix for saved files
@@ -68,7 +68,7 @@ print("\nRELOADING REGRESSORS!\n") if RLD else ...
 # -------
 # Labels
 labels = {
-     "4282-2.0": "Short_Term_Memory",
+     "4282-2.0": "Numeric_Memory",
      "6350-2.0": "Executive_Function",
      "20016-2.0": "Abstract_Reasoning",
      "20023-2.0": "Reaction_Time",
@@ -258,7 +258,7 @@ for i, feat in enumerate(features):
             df=regressors_clean,
             main_vars=["diab"],
             vars_to_match=["age", "sex", "college", "htn"],
-            random_state=111 # 9,10,111 with bmi
+            random_state=111
             )
 
     if (CTRS == "sex") & (RLD == False):
@@ -290,7 +290,7 @@ for i, feat in enumerate(features):
 # from helpers.plotting_style import plot_pars, plot_funcs
 
 # If not separating per sex
-if ~STRAT_SEX:
+if STRAT_SEX is False:
 
     # Iterate over all features
     for i, feat in enumerate(features):

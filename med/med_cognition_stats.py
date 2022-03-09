@@ -61,7 +61,7 @@ RLD = False  # Reload regressor matrices instead of computing them again
 # -------
 # Labels
 labels = {
-     "4282-2.0": "Short_Term_Memory",
+     "4282-2.0": "Numeric_Memory",
      "6350-2.0": "Executive_Function",
      "20016-2.0": "Abstract_Reasoning",
      "20023-2.0": "Reaction_Time",
@@ -207,7 +207,7 @@ plt.style.use("default")
 plt.rcdefaults()
 
 # <><><><><><><><>
-raise
+# raise
 # <><><><><><><><>
 
 

@@ -416,7 +416,7 @@ for c, combo in tqdm(enumerate(combos)):
     # Adjust labels to avoid overlap
     adjust_text(annot_list, arrowprops=dict(arrowstyle="-", linewidth=1,
                                             connectionstyle="angle3"),
-                expand_points=[2, 3.5])
+                expand_points=[2, 1.5])
 
     # -----
 
@@ -430,12 +430,15 @@ for c, combo in tqdm(enumerate(combos)):
     plt.axvline(0, linestyle="--", lw=1, color="gray", zorder=1)
 
     # Formatting
+    metric_a = "z-score" if "neuroquery" in a else "Beta coefficient"
+    metric_b = "z-score" if "neuroquery" in a else "Beta coefficient"
+
     plt.xlabel(a.replace("_", " @").replace("diab", "T2DM") \
                .replace("neurofunction", "Brain Activation (ALFF)") \
-                   + "\n(Beta coefficient)")
+                   + f"\n({metric_a})")
     plt.ylabel(b.replace("_", " @").replace("diab", "T2DM") \
                .replace("neurofunction", "Brain Activation (ALFF)") \
-                   + "\n(Beta coefficient)")
+                   + f"\n({metric_b})")
 
     xlim = np.array(plt.gca().get_xlim())
     xpad = 0.05*(xlim[1] - xlim[0])

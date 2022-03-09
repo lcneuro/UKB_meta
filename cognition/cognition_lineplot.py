@@ -52,7 +52,7 @@ print("\nRELOADING REGRESSORS!\n") if RLD else ...
 # -------
 # Labels
 labels = {
-     "4282-2.0": "Short_Term_Memory",
+     "4282-2.0": "Numeric_Memory",
      "6350-2.0": "Executive_Function",
      "20016-2.0": "Abstract_Reasoning",
      "20023-2.0": "Reaction_Time",
@@ -166,7 +166,7 @@ df = regressors_matched \
     .merge(data_merged, on="eid") \
     .set_index(list(reg_cols)) \
     .pipe(lambda df: df.assign(**{
-        "Short_Term_Memory": df["Short_Term_Memory"],
+        "Numeric_Memory": df["Numeric_Memory"],
          "Executive_Function": -1*df["Executive_Function"],
          "Abstract_Reasoning": df["Abstract_Reasoning"],
          "Reaction_Time": -1*df["Reaction_Time"],
